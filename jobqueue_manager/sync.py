@@ -1,5 +1,3 @@
-from media_package import MediaPackageManager
-
 class SyncManager():
     """
     Handles pushing media files around the various clients

@@ -1,18 +1,19 @@
 import sys
 import psycopg2
 
-__default_db_type  = 'PostgreSQL'
-__default_db_port  = 5432
 
-__default_connection_string = 'host={0} user={1} dbname={2} port={3}'
-__default_connection_pass   = ' password={0}'
-
-__required_db_opts = ['db_user', 'db_pass', 'db_host']
-
-class DBManager()
+class DBManager():
     """
     Generic DB functions in here, will be specialised per DB type (PostgreSQL, MySQL, SQLLite)
     """
+
+    __default_db_type  = 'PostgreSQL'
+    __default_db_port  = 5432
+
+    __default_connection_string = 'host={0} user={1} dbname={2} port={3}'
+    __default_connection_pass   = ' password={0}'
+
+    __required_db_opts = ['db_user', 'db_pass', 'db_host']
 
     def __init__(
             db_type   = __default_db_type
