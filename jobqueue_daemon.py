@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-from manager import JobQueueManager
-from manager import JobQueueManagerConfigParser
+from jobqueue_manager.manager import JobQueueManager
+from jobqueue_manager.manager import JobQueueManagerConfigParser
 
 #
 #
@@ -13,8 +13,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-v', '--verbose', action='count', default=0
         , help='Increases verbosity (max 3)')
-parser.add_argument('-c', '--connection-string', dest='conn', required=True
-        , help='Connection String: user@host/db')
+parser.add_argument('-c', '--config',  action='store', dest='config_file'
+        , help='Configuration file for the Job Queue Manager')
+parser.add_argument('--daemon', action='store_true'
+        , help='Start the Manager as a daemon')
 
 #
 #
@@ -25,7 +27,6 @@ def main():
     """
 
     options = parser.parse_args()
-    print(options)
 
     daemon = JobQueueManager(
             JobQueueManagerConfigParser(options)

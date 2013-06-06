@@ -3,13 +3,13 @@ class SyncManager():
     Handles pushing media files around the various clients
     """
 
-    def __init__():
+    def __init__(self):
         pass
 
-    def run_in_shell():
+    def run_in_shell(self):
         pass
 
-    def transfer_file(source, destination, client, action='push'):
+    def transfer_file(self, source, destination, client, action='push'):
         """
         Takes a file (source & destination) and either:
             * push: Pushes it out to a client from the server (default)
@@ -17,7 +17,7 @@ class SyncManager():
         """
         pass
 
-    def verify_remote_file(source, destination, client):
+    def verify_remote_file(self, source, destination, client):
         """
         Takes a file (source & destination) and does the following:
             1. Hash the local file
@@ -28,7 +28,7 @@ class SyncManager():
         """
         pass
 
-    def verify_remote_package(package, client):
+    def verify_remote_package(self, package, client):
         """
         Takes a single Media Package and ensures it exists on the client:
             * Get list of files from package
@@ -42,3 +42,6 @@ class SyncManager():
                     , client)
         """
         pass
+
+if __name__ == '__main__':
+    sync_manager = SyncManager()
