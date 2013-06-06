@@ -29,7 +29,9 @@ def main():
     options = parser.parse_args()
 
     daemon = JobQueueManager(
-            JobQueueManagerConfigParser(options)
+            JobQueueManagerConfigParser(options.config_file)
+            , options.verbose
+            , options.daemon
     )
 
 if __name__ == '__main__':

@@ -7,20 +7,21 @@ import sys
 import time
 import atexit
 import logging
+#import configparser
 
 class JobQueueManagerConfigParser():
     """
-    Takes the options provided on the command line and parses them
+    Takes the options provided on the command line
+        and parses them into a class to use by the Manager
     """
 
-    def __init__(self, options):
-        if options.config_file:
-            self.parse_configfile(options.config_file)
-        else:
-            self.config_file = None
+    default_pidfile = '/run/MediaServer/jobqueuer.pid'
+    
+    pidfile = default_pidfile
 
-    def parse_configfile(config_file):
+    def __init__(self, config_file):
         pass
+
 
 
 class JobQueueManager():
@@ -31,9 +32,8 @@ class JobQueueManager():
     daemon_working_dir = '/'
     daemon_umask       = 0
     default_logfile = '/home/michael/logs/media_manager.log'
-    default_pidfile = '/run/MediaServer/jobqueuer.pid'
 
-    def __init__(self, options):
+    def __init__(self, options, verbose, daemon_mode):
         """
         Set PID file and start logging
         """
@@ -54,7 +54,7 @@ class JobQueueManager():
         self.logger = logging.getLogger(title)
         self.logger.setLevel(logging.DEBUG)
 
-        # Create the file log, so channel hander as WE ARE A BLOODY DAEMON!
+        # Create the file log, so channel handler as WE ARE A BLOODY DAEMON!
         fh = logging.FileHandler(log_destination)
         fh.setLevel(logging.DEBUG)
 
@@ -133,7 +133,6 @@ class JobQueueManager():
 
             if job:
                 self.logger.debug('Starting job {0}'.format(job.getid()))
-                job.report_start()
                 job.execute()
 
                 if job.completed():
@@ -142,6 +141,8 @@ class JobQueueManager():
                 else:
                     self.logger.debug('Issue with job {0}'.format(job.getid()))
                     job.report_failed()
+            else:
+                self.logger.debug('Job queue is empty.')
             
             time.sleep(options.sleep_time)
 

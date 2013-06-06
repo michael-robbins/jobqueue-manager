@@ -158,5 +158,5 @@ INSERT INTO media_tv_links VALUES (DEFAULT, 3, 4);
 INSERT INTO media_tv_links VALUES (DEFAULT, 3, 5);
 
 -- Create a test job, pushing Prometheus to the Client from the Server
-INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL); -- package(2) from client(1) to client(2) with action(1)
+-- INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL); -- package(2) from client(1) to client(2) with action(1)
 
