@@ -7,23 +7,30 @@ import sys
 import time
 import atexit
 import logging
-#import configparser
+import configparser
 
+#
+#
+#
 class JobQueueManagerConfigParser():
     """
     Takes the options provided on the command line
         and parses them into a class to use by the Manager
     """
 
+    parser = configparser.ConfigParser()
+
+
+    # Move into config file eventually
     default_pidfile = '/run/MediaServer/jobqueuer.pid'
-    
-    pidfile = default_pidfile
 
     def __init__(self, config_file):
-        pass
+        parser.read(config_file)
 
 
-
+#
+#
+#
 class JobQueueManager():
     """
     Handles the monitoring of the JobQueue and runs jobs
@@ -33,6 +40,9 @@ class JobQueueManager():
     daemon_umask       = 0
     default_logfile = '/home/michael/logs/media_manager.log'
 
+    #
+    #
+    #
     def __init__(self, options, verbose, daemon_mode):
         """
         Set PID file and start logging
@@ -47,6 +57,9 @@ class JobQueueManager():
         
         self.setup_logging('jobqueue_manager')
 
+    #
+    #
+    #
     def setup_logging(self, title, log_destination=default_logfile):
         """
         Setup the logger
@@ -65,6 +78,9 @@ class JobQueueManager():
 
         self.logger.debug('Set up logging')
 
+    #
+    #
+    #
     def daemonize(self):
         """
         Turn this running process into a deamon
@@ -115,6 +131,9 @@ class JobQueueManager():
             f.write(pid + '\n')
         self.logger.debug('Written PID file ({0})'.format(self.pidfile))
 
+    #
+    #
+    #
     def on_exit(self):
         """
         Delete the PID file
@@ -122,6 +141,9 @@ class JobQueueManager():
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
+    #
+    #
+    #
     def run(self):
         """
         Main worker loop
@@ -146,6 +168,9 @@ class JobQueueManager():
             
             time.sleep(options.sleep_time)
 
+    #
+    #
+    #
     def start(self):
         """
         Start the daemon
@@ -164,8 +189,8 @@ class JobQueueManager():
             self.logger.error(message.format(self.pidfile))
             sys.exit(1)
         
-        # Start the daemon
-        if not self.daemonize():
+        # Turn into a daemon if we are told to
+        if self.options.daemonize() and not self.daemonize():
             self.logger.error('Unable to create daemon properly, bailing')
             raise Exception('Bad Daemon Creation')
 
@@ -175,13 +200,21 @@ class JobQueueManager():
 
         self.logger.notice('Finished successfully, bye bye!')
 
+    #
+    #
+    #
     def stop(self):
         """
         Stop the daemon
         """
-        
 
 
+#
+#
+#
 if __name__ == '__main__':
-    jqm = JobQueueManager('/run/MediaServer/jobqueuer.pid')
+    """
+    Peform some basic checks
+    """
+    jqm = JobQueueManager()
     jqm.start()

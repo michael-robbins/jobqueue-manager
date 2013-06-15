@@ -4,9 +4,6 @@ import argparse
 from jobqueue_manager.manager import JobQueueManager
 from jobqueue_manager.manager import JobQueueManagerConfigParser
 
-#
-#
-#
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'
 )
@@ -28,11 +25,13 @@ def main():
 
     options = parser.parse_args()
 
-    daemon = JobQueueManager(
+    manager = JobQueueManager(
             JobQueueManagerConfigParser(options.config_file)
             , options.verbose
             , options.daemon
     )
+
+    return manager.run()
 
 if __name__ == '__main__':
     main()

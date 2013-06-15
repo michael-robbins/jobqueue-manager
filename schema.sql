@@ -6,14 +6,14 @@
 
 -- Drop tables
 DROP TABLE job_queue;
-DROP TABLE clients;
-DROP TABLE media_files;
 DROP TABLE media_package_files;
 DROP TABLE media_package_availability;
+DROP TABLE clients;
+DROP TABLE media_files;
 DROP TABLE media_tv_links;
 DROP TABLE media_packages;
 DROP TABLE media_package_types;
-DROP TABLE client_types;
+DROP TABLE client_types CASCADE;
 DROP TABLE actions;
 
 --
@@ -43,7 +43,7 @@ CREATE TABLE media_package_types (
 CREATE TABLE clients (
     -- Can be servers, clients, etc. They are the end points.
     client_id SERIAL PRIMARY KEY
-    , client_type_id INTEGER NOT NULL REFERENCES client_types(client_type_id) FOREIGN KEY ON DELETE RESTRICT
+    , client_type_id INTEGER NOT NULL REFERENCES client_types(client_type_id) ON DELETE RESTRICT
     , name VARCHAR(64) NOT NULL
     , sync_hostname VARCHAR(64) NOT NULL
     , sync_port INTEGER NOT NULL
@@ -53,12 +53,12 @@ CREATE TABLE clients (
 CREATE TABLE media_packages (
     -- Media package is of a certain type and contains files, descriptions and metadata in XML format
     package_id SERIAL PRIMARY KEY NOT NULL
-    , package_type_id INTEGER NOT NULL REFERENCES media_package_types(package_type_id) FOREIGN KEY ON DELETE RESTRICT
+    , package_type_id INTEGER NOT NULL REFERENCES media_package_types(package_type_id) ON DELETE RESTRICT
     , name VARCHAR(256) NOT NULL
     , folder_name VARCHAR(256)
     , metadata_xml VARCHAR(1024)
-    , date_created DATETIME WITH TIMEZONE NOT NULL DEFAULT NOW()
-    , date_last_index DATETIME WITH TIMEZONE
+    , date_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    , date_last_index TIMESTAMP WITH TIME ZONE
     , is_archived BOOLEAN DEFAULT false
 );
 
@@ -66,40 +66,40 @@ CREATE TABLE media_files (
     -- Each file belongs to a package
     file_id SERIAL PRIMARY KEY
     , relative_path VARCHAR(256) NOT NULL -- This is relative to the clients base_path
-    , date_last_index DATETIME WITH TIMEZONE DEFAULT NOW() -- Time the file was last indexed
+    , date_last_index TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Time the file was last indexed
 );
 
 CREATE TABLE media_tv_links (
     -- Links a TV Base folder with its Season folders
-    base_id INTEGER NOT NULL REFERENCES media_packages(package_id) FOREIGN KEY ON DELETE RESTRICT
-    , season_id INTEGER NOT NULL REFERENCES media_packages(package_id) FOREIGN KEY ON DELETE CASCADE
+    base_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE RESTRICT
+    , season_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE CASCADE
 );
 
 CREATE TABLE media_package_files (
     -- Each package contains the following files
     -- TODO: Trigger that when a package_id is deleted, we also delete the row in media_files(file_id)
-    package_id INTEGER NOT NULL REFERENCES media_packages(package_id) FOREIGN KEY ON DELETE CASCADE
-    , file_id INTEGER NOT NULL REFERENCES media_files(file_id) FOREIGN KEY ON DELETE CASCASE
+    package_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE CASCADE
+    , file_id INTEGER NOT NULL REFERENCES media_files(file_id) ON DELETE CASCADE
 );
 
 CREATE TABLE media_package_availability (
     -- Each client has the following packages
-    client_id INTEGER NOT NULL REFERENCES clients(client_id) FOREIGN KEY ON DELETE RESTRICT
-    , package_id INTEGER NOT NULL REFERENCES media_packages(package_id) FOREIGN KEY ON DELETE CASCADE
-    , date_last_index DATETIME WITH TIMEZONE DEFAULT NOW()
+    client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
+    , package_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE CASCADE
+    , date_last_index TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     , is_missing_files BOOLEAN DEFAULT false
 );
 
 CREATE TABLE job_queue (
     -- Contains jobs! Suprise Suprise!
     job_id SERIAL PRIMARY KEY
-    , package_id INTEGER NOT NULL REFERENCES media_packages(package_id) FOREIGN KEY ON DELETE RESTRICT
-    , src_client_id INTEGER NOT NULL REFERENCES clients(client_id) FOREIGN KEY ON DELETE RESTRICT
-    , dst_client_id INTEGER NOT NULL REFERENCES clients(client_id) FOREIGN KEY ON DELETE RESTRICT
-    , action_id INTEGER NOT NULL REFERENCES actions(action_id) FOREIGN KEY ON DELETE RESTRICT
-    , date_queued DATETIME WITH TIMEZONE DEFAULT NOW()
-    , date_started DATETIME WITH TIMEZONE
-    , date_completed DATETIME WITH TIMEZONE
+    , package_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE RESTRICT
+    , src_client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
+    , dst_client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
+    , action_id INTEGER NOT NULL REFERENCES actions(action_id) ON DELETE RESTRICT
+    , date_queued TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    , date_started TIMESTAMP WITH TIME ZONE
+    , date_completed TIMESTAMP WITH TIME ZONE
 );
 
 --
@@ -122,11 +122,11 @@ INSERT INTO media_package_types VALUES (DEFAULT, 'TV Season');  -- 3
 INSERT INTO clients VALUES (DEFAULT, 1, 'Media Server', 'filer-server.dalmura.private.lan', 22, '/data/media'); -- 1
 INSERT INTO clients VALUES (DEFAULT, 2, 'Prometheus'  , 'prometheus.dalmura.private.lan'  , 22, '/data/media'); -- 2
 
-INSERT INTO media_packages VALUES (DEFAULT, 1, 'Avatar', 'Avatar (2009)', '', NOW(), NULL, false, false);                   -- 1
-INSERT INTO media_packages VALUES (DEFAULT, 1, 'Prometheus', 'Prometheus (2012)', '', NOW(), NULL, false, false);           -- 2
-INSERT INTO media_packages VALUES (DEFAULT, 2, 'Game of Thrones', 'Game of Thones', '', NOW(), NULL, false, false);         -- 3
-INSERT INTO media_packages VALUES (DEFAULT, 3, 'Game of Thrones - Season 1', 'Season 1', '', NOW(), NULL, false, false);    -- 4
-INSERT INTO media_packages VALUES (DEFAULT, 3, 'Game of Thrones - Season 2', 'Season 2', '', NOW(), NULL, false, false);    -- 5
+INSERT INTO media_packages VALUES (DEFAULT, 1, 'Avatar', 'Avatar (2009)', '', NOW(), NULL, false);                   -- 1
+INSERT INTO media_packages VALUES (DEFAULT, 1, 'Prometheus', 'Prometheus (2012)', '', NOW(), NULL, false);           -- 2
+INSERT INTO media_packages VALUES (DEFAULT, 2, 'Game of Thrones', 'Game of Thones', '', NOW(), NULL, false);         -- 3
+INSERT INTO media_packages VALUES (DEFAULT, 3, 'Game of Thrones - Season 1', 'Season 1', '', NOW(), NULL, false);    -- 4
+INSERT INTO media_packages VALUES (DEFAULT, 3, 'Game of Thrones - Season 2', 'Season 2', '', NOW(), NULL, false);    -- 5
 
 INSERT INTO media_files VALUES (DEFAULT, 'Avatar (2009).mkv', NOW());                       -- 1
 INSERT INTO media_files VALUES (DEFAULT, 'Avatar (2009).xml', NOW());                       -- 2
@@ -154,8 +154,8 @@ INSERT INTO media_package_availability VALUES (2, 1);
 INSERT INTO media_package_availability VALUES (2, 3);
 INSERT INTO media_package_availability VALUES (2, 5);
 
-INSERT INTO media_tv_links VALUES (DEFAULT, 3, 4);
-INSERT INTO media_tv_links VALUES (DEFAULT, 3, 5);
+INSERT INTO media_tv_links VALUES (3, 4);
+INSERT INTO media_tv_links VALUES (3, 5);
 
 -- Create a test job, pushing Prometheus to the Client from the Server
 -- INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL); -- package(2) from client(1) to client(2) with action(1)

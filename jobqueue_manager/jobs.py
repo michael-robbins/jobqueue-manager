@@ -2,7 +2,7 @@ class JobManager():
     """
     Used to manage jobs and extract info from the JobManager database
     """
-
+    SQL                 = {}
     SQL['next_job']     = 'SELECT * FROM get_next_job()' # We use a function to ensure no other manager takes the same job (exclusive locking etc)
     SQL['get_job']      = 'SELECT * FROM job_queue WHERE job_id = {0}'
     SQL['start_job']    = 'UPDATE job_queue SET date_started = NOW() WHERE job_id = {0}'
