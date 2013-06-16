@@ -12,71 +12,69 @@ import configparser
 #
 #
 #
-class JobQueueManagerConfigParser():
-    """
-    Takes the options provided on the command line
-        and parses them into a class to use by the Manager
-    """
-
-    parser = configparser.ConfigParser()
-
-
-    # Move into config file eventually
-    default_pidfile = '/run/MediaServer/jobqueuer.pid'
-
-    def __init__(self, config_file):
-        parser.read(config_file)
-
-
-#
-#
-#
 class JobQueueManager():
     """
     Handles the monitoring of the JobQueue and runs jobs
     """
-    daemon_redirect_to = '/dev/null'
-    daemon_working_dir = '/'
-    daemon_umask       = 0
-    default_logfile = '/home/michael/logs/media_manager.log'
+
+    required_config = {
+            'MANAGER'  : ['db_type', 'db_host', 'db_port', 'db_name', 'db_user', 'sleep']
+            , 'DAEMON' : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask']
+            }
+
 
     #
     #
     #
-    def __init__(self, options, verbose, daemon_mode):
+    def __init__(self, config_file, verbose, daemon_mode=True):
         """
-        Set PID file and start logging
+        Parse config file and setup the logging
         """
 
-        self.options = options
+        self.config = configparser.ConfigParser()
+        self.config.read(config_file)
 
-        if self.options.pidfile:
-            self.pidfile = self.options.pidfile
-        else:
-            self.pidfile = self.default_pidfile
-        
-        self.setup_logging('jobqueue_manager')
+        self.verbose=verbose
+        self.daemon_mode=daemon_mode
+
+        for section in self.required_config:
+            if section not in self.config.sections():
+                print('ERROR: Missing config_file section:', section)
+            else:
+                for option in self.required_config[section]:
+                    if option not in self.config.options(section):
+                        print('ERROR: Missing Option', option, 'inside section:', section)
+
+        self.setup_logging(self.config['DAEMON']['log_name']
+                    , self.config['DAEMON']['log_file'])
+
+        for i in self.config.sections():
+            for j in self.config.options(i):
+                self.logger.debug('{0}: {1}={2}'.format(i,j,self.config[i][j]))
+
 
     #
     #
     #
-    def setup_logging(self, title, log_destination=default_logfile):
+    def setup_logging(self, title, log_destination):
         """
         Setup the logger
         """
         self.logger = logging.getLogger(title)
         self.logger.setLevel(logging.DEBUG)
 
-        # Create the file log, so channel handler as WE ARE A BLOODY DAEMON!
         fh = logging.FileHandler(log_destination)
         fh.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('timestamp="%(asctime)s" name="%(name)s" level="%(levelname)s" message="%(message)s"')
+        formatter = logging.Formatter('timestamp="%(asctime)s" name="%(name)s" ' + \
+                'level="%(levelname)s" message="%(message)s"')
 
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
 
-        self.logger.debug('Set up logging')
+        self.logger.debug('Logging is now set up')
+        self.logger.info('Log File: {0}'.format(log_destination))
+
 
     #
     #
@@ -85,7 +83,6 @@ class JobQueueManager():
         """
         Turn this running process into a deamon
         """
-
         # Perform first fork
         try:
             pid = os.fork()
@@ -97,8 +94,8 @@ class JobQueueManager():
             raise Exception(e)
 
         # Escape out of where we started
-        os.chdir(self.daemon_working_dir)
-        os.umask(self.daemon_umask)
+        os.chdir(self.config['DAEMON']['working_dir'])
+        os.umask(self.config['DAEMON']['umask'])
         os.setsid()
 
         # Perform second fork
@@ -129,7 +126,7 @@ class JobQueueManager():
         pid = str(os.getpid())
         with open(self.pidfile,'w+') as f:
             f.write(pid + '\n')
-        self.logger.debug('Written PID file ({0})'.format(self.pidfile))
+        self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid,self.pidfile))
 
     #
     #
@@ -148,10 +145,11 @@ class JobQueueManager():
         """
         Main worker loop
         """
-        job_manager = JobManager(options)
+        db_manager  = DBManager(self.config['MANAGER'], self.logger)
+        job_manager = JobManager(db_manager.get_cursor(), self.logger)
         
-        while job_manager.isalive():
-            job = job_manager.nextjob()
+        while job_manager.is_alive():
+            job = job_manager.get_next_job()
 
             if job:
                 self.logger.debug('Starting job {0}'.format(job.getid()))
@@ -166,8 +164,16 @@ class JobQueueManager():
             else:
                 self.logger.debug('Job queue is empty.')
             
-            time.sleep(options.sleep_time)
+            sleep_time = float(self.config['MANAGER']['sleep'])
+            self.logger.debug('Sleeping for {0}'.format(sleep_time))
+            time.sleep(sleep_time)
 
+        if not job_manager.isalive():
+            self.logger.debug('job_manager.isalive() is false, exiting')
+            return True
+        else:
+            self.logger.debug('We exited the while loop but are supposedly still alive')
+            return False
     #
     #
     #
@@ -184,21 +190,25 @@ class JobQueueManager():
 
         # pidfile exists, bail
         if pid:
-            message = "pidfile {0} already exist. " + \
+            message = "pidfile {0} already exists. " + \
                       "Daemon already running?\n"
             self.logger.error(message.format(self.pidfile))
             sys.exit(1)
         
         # Turn into a daemon if we are told to
-        if self.options.daemonize() and not self.daemonize():
-            self.logger.error('Unable to create daemon properly, bailing')
-            raise Exception('Bad Daemon Creation')
+        if self.daemon_mode:
+            print('NOTICE: We are about to turn into a daemon, no more stdout!')
+            self.daemonize()
+            self.logger.debug('We are now a daemon, congrats')
+        else:
+            print('NOTICE: Skipping daemon mode, all to stdout')
 
-        # Look into resource pools here, potentially multi-thread the process. Eg. multiple instances of run()
-        if not self.run():
-            raise Exception('Something broke bad')
+        # Work our magic
+        self.run()
 
+        # Finishing up properly
         self.logger.notice('Finished successfully, bye bye!')
+
 
     #
     #
@@ -207,6 +217,9 @@ class JobQueueManager():
         """
         Stop the daemon
         """
+        # Figure out how to stop a live daemon running
+        # Load PID file, kill process?
+        # Inject kill command into DB queue?
 
 
 #

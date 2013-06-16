@@ -2,7 +2,6 @@
 
 import argparse
 from jobqueue_manager.manager import JobQueueManager
-from jobqueue_manager.manager import JobQueueManagerConfigParser
 
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'
@@ -10,7 +9,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-v', '--verbose', action='count', default=0
         , help='Increases verbosity (max 3)')
-parser.add_argument('-c', '--config',  action='store', dest='config_file'
+parser.add_argument('-c', '--config',  action='store', dest='config_file', required=True
         , help='Configuration file for the Job Queue Manager')
 parser.add_argument('--daemon', action='store_true'
         , help='Start the Manager as a daemon')
@@ -26,7 +25,7 @@ def main():
     options = parser.parse_args()
 
     manager = JobQueueManager(
-            JobQueueManagerConfigParser(options.config_file)
+            options.config_file
             , options.verbose
             , options.daemon
     )
