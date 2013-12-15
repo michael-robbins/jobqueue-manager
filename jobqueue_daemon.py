@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument('-v', '--verbose', action='count', default=0
-        , help='Increases verbosity (max 3)')
+        , help='Increases verbosity')
 parser.add_argument('-c', '--config',  action='store', dest='config_file', required=True
         , help='Configuration file for the Job Queue Manager')
 parser.add_argument('--daemon', action='store_true'

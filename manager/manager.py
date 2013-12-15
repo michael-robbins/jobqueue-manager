@@ -1,12 +1,13 @@
 from manager.db import DBManager
+
 from manager.sync import SyncManager
 from manager.jobs import JobManager
+from manager.logging import Logging
 
 import os
 import sys
 import time
 import atexit
-import logging
 import configparser
 
 #
@@ -18,7 +19,7 @@ class JobQueueManager():
     """
 
     required_config = {
-            'MANAGER'  : ['db_type', 'db_host', 'db_port', 'db_name', 'db_user', 'sleep']
+            'MANAGER'  : ['db_type', 'db_host', 'db_port', 'db_name', 'db_user', 'db_file', 'sleep']
             , 'DAEMON' : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask']
             }
 
@@ -45,35 +46,12 @@ class JobQueueManager():
                     if option not in self.config.options(section):
                         print('ERROR: Missing Option', option, 'inside section:', section)
 
-        self.setup_logging(self.config['DAEMON']['log_name']
-                    , self.config['DAEMON']['log_file'])
+        self.logger = Logging(self.config['DAEMON']['log_name']
+                    , self.config['DAEMON']['log_file']).get_logger()
 
         for i in self.config.sections():
             for j in self.config.options(i):
                 self.logger.debug('{0}: {1}={2}'.format(i,j,self.config[i][j]))
-
-
-    #
-    #
-    #
-    def setup_logging(self, title, log_destination):
-        """
-        Setup the logger
-        """
-        self.logger = logging.getLogger(title)
-        self.logger.setLevel(logging.DEBUG)
-
-        fh = logging.FileHandler(log_destination)
-        fh.setLevel(logging.DEBUG)
-
-        formatter = logging.Formatter('timestamp="%(asctime)s" name="%(name)s" ' + \
-                'level="%(levelname)s" message="%(message)s"')
-
-        fh.setFormatter(formatter)
-        self.logger.addHandler(fh)
-
-        self.logger.debug('Logging is now set up')
-        self.logger.info('Log File: {0}'.format(log_destination))
 
 
     #
