@@ -24,12 +24,10 @@ class DBManager():
         return dict() of generic SQL commands
         """
         SQL                 = {}
-        SQL['all_jobs']     = 'select * from job_queue'
-        SQL['next_job']     = 'select * from job_queue where date_started is null ' + \
-                                 'and date_completed is null order by date_queued asc limit 1'
-        SQL['get_job']      = 'select * from job_queue where job_id = ?'
-        SQL['start_job']    = 'update job_queue set date_started = now() where job_id = ?'
-        SQL['finish_job']   = 'update job_queue set date_completed = now() where job_id = ?'
+        SQL['all_jobs']     = 'SELECT * FROM job_queue'
+        SQL['next_job']     = 'SELECT * FROM job_queue WHERE date_started IS NULL ' + \
+                                 'AND date_completed IS NULL ORDER BY date_queued ASC LIMIT 1'
+        SQL['get_job']      = 'SELECT * FROM job_queue WHERE job_id = ?'
 
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
@@ -70,10 +68,14 @@ class Postgres_DBManager(DBManager):
         """
         return dict() of PostgreSQL specific commands
         """
+
         SQL = DBManager.get_sql_cmds(list_of_cmds)
 
         # Provide any PostgreSQL specific command overrides here
         # SQL['foo'] = 'SELECT * FROM bar'
+
+        SQL['start_job']  = 'UPDATE job_queue SET date_started   = NOW() WHERE job_id = ?'
+        SQL['finish_job'] = 'UPDATE job_queue SET date_completed = NOW() WHERE job_id = ?'
 
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
@@ -87,7 +89,6 @@ class SQLite3_DBManager(DBManager):
     """
 
     def __init__(self, config, logger):
-
         """
         Set any Sqlite3 specific stuff and bail to parent class
         """
@@ -108,11 +109,15 @@ class SQLite3_DBManager(DBManager):
         """
         Return dict() of SQLite3 specific commands
         """
+
         SQL = DBManager.get_sql_cmds(list_of_cmds)
 
         # Provide any specific overrides below for SQLite3
         # SQL['foo'] = 'SELECT * FROM bar'
-        
+
+        SQL['start_job']  = 'UPDATE job_queue SET date_started   = DATETIME(\'NOW\') WHERE job_id = ?'
+        SQL['finish_job'] = 'UPDATE job_queue SET date_completed = DATETIME(\'NOW\') WHERE job_id = ?'
+
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
 
@@ -145,6 +150,6 @@ if __name__ == '__main__':
 
     if c:
         c.execute("SELECT * FROM clients")
-        print(c.fetchone()) 
+        print(c.fetchall()) 
     else:
         print("ERROR: Unable to open cursor")

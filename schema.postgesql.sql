@@ -21,8 +21,11 @@ DROP TABLE actions;
 --
 
 -- Create tables for data
+-- The verb:
+--  - We 'push' from a server to a client
+--  - We 'delete' a package off a client
+--  - We 'pull' a package from a client to the server
 CREATE TABLE actions (
-    -- The verb, we 'push' from a server to a client, we 'delete' a package off a client, we 'pull' a package from a client to the server
     action_id SERIAL PRIMARY KEY
     , name VARCHAR(64) NOT NULL
     , system_name VARCHAR(64) NOT NULL
@@ -98,8 +101,8 @@ CREATE TABLE job_queue (
     , dst_client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
     , action_id INTEGER NOT NULL REFERENCES actions(action_id) ON DELETE RESTRICT
     , date_queued TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    , date_started TIMESTAMP WITH TIME ZONE
-    , date_completed TIMESTAMP WITH TIME ZONE
+    , date_started TIMESTAMP WITH TIME ZONE DEFAULT NULL
+    , date_completed TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 --
