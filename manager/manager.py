@@ -61,6 +61,7 @@ class JobQueueManager():
         """
         Turn this running process into a deamon
         """
+
         # Perform first fork
         try:
             pid = os.fork()
@@ -113,6 +114,7 @@ class JobQueueManager():
         """
         Delete the PID file
         """
+
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
@@ -123,6 +125,7 @@ class JobQueueManager():
         """
         Main worker loop
         """
+
         db_manager  = DBManager(self.config['MANAGER'], self.logger)
         job_manager = JobManager(db_manager.get_cursor(), self.logger)
         
@@ -130,27 +133,27 @@ class JobQueueManager():
             job = job_manager.get_next_job()
 
             if job:
-                self.logger.debug('Starting job {0}'.format(job.getid()))
+                self.logger.notice('Starting job {0}'.format(job.getid()))
                 job.execute()
 
                 if job.completed():
-                    self.logger.debug('Finished job {0}'.format(job.getid()))
+                    self.logger.notice('Finished job {0}'.format(job.getid()))
                     job.report_complete()
                 else:
-                    self.logger.debug('Issue with job {0}'.format(job.getid()))
+                    self.logger.notice('Issue with job {0}'.format(job.getid()))
                     job.report_failed()
             else:
-                self.logger.debug('Job queue is empty.')
+                self.logger.notice('Job queue is empty.')
             
             sleep_time = float(self.config['MANAGER']['sleep'])
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
         if not job_manager.isalive():
-            self.logger.debug('job_manager.isalive() is false, exiting')
+            self.logger.notice('job_manager.isalive() is false, exiting')
             return True
         else:
-            self.logger.debug('We exited the while loop but are supposedly still alive')
+            self.logger.error('We exited the while loop but are supposedly still alive')
             return False
     #
     #

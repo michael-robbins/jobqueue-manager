@@ -1,7 +1,3 @@
-import sys
-import os
-
-
 #
 #
 #
@@ -125,6 +121,8 @@ class SQLite3_DBManager(DBManager):
 #
 if __name__ == '__main__':
 
+    # Testing
+    import os
     from logger import Logger
 
     log_file = '/tmp/db_test.log'

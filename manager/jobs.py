@@ -79,7 +79,8 @@ class JobManager():
 #
 #
 if __name__ == '__main__':
-    
+
+    # Testing
     import os
     from logger import Logger
     from db import SQLite3_DBManager 
@@ -103,4 +104,3 @@ if __name__ == '__main__':
 
     if job_manager.is_alive():
         print(job_manager.get_next_job())
-
