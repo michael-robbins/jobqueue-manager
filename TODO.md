@@ -6,9 +6,4 @@ Short Term:
 Long Term:
 * Write tests for everything
   - Start with db.py and the provided schema for SQLite3
-
-
-Done List:
-
-2013-12-17:
-* Make DB Manager implementations return implementation specific SQL
+  - Will turn the debug output when running libs interactively into unit tests
