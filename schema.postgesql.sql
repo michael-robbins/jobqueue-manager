@@ -5,6 +5,7 @@
 ---
 
 -- Drop tables
+DROP TABLE job_history;
 DROP TABLE job_queue;
 DROP TABLE media_package_files;
 DROP TABLE media_package_availability;
@@ -103,6 +104,19 @@ CREATE TABLE job_queue (
     , date_queued TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     , date_started TIMESTAMP WITH TIME ZONE DEFAULT NULL
     , date_completed TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+CREATE TABLE job_history (
+    -- Contains old jobs! Suprise Suprise!
+    job_id SERIAL PRIMARY KEY
+    , package_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE RESTRICT
+    , src_client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
+    , dst_client_id INTEGER NOT NULL REFERENCES clients(client_id) ON DELETE RESTRICT
+    , action_id INTEGER NOT NULL REFERENCES actions(action_id) ON DELETE RESTRICT
+    , date_queued TIMESTAMP WITH TIME ZONE NOT NULL
+    , date_started TIMESTAMP WITH TIME ZONE NOT NULL
+    , date_completed TIMESTAMP WITH TIME ZONE NOT NULL
+    , outcome VARCHAR(255) NOT NULL
 );
 
 --

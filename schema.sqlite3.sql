@@ -10,6 +10,7 @@
 ---
 
 -- Drop tables
+DROP TABLE job_history;
 DROP TABLE job_queue;
 DROP TABLE media_package_files;
 DROP TABLE media_package_availability;
@@ -116,7 +117,24 @@ CREATE TABLE job_queue (
     , action_id INTEGER NOT NULL
     , date_queued TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     , date_started TEXT DEFAULT NULL
-    , date_completed TEXT DEFAULT NULL
+    , date_finished TEXT DEFAULT NULL
+    , FOREIGN KEY(package_id) REFERENCES media_packages(package_id) ON DELETE RESTRICT
+    , FOREIGN KEY(src_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT
+    , FOREIGN KEY(dst_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT
+    , FOREIGN KEY(action_id) REFERENCES actions(action_id) ON DELETE RESTRICT
+);
+
+-- Contains old jobs! Suprise Suprise!
+CREATE TABLE job_history (
+    job_id INTEGER PRIMARY KEY AUTOINCREMENT
+    , package_id INTEGER NOT NULL
+    , src_client_id INTEGER NOT NULL
+    , dst_client_id INTEGER NOT NULL
+    , action_id INTEGER NOT NULL
+    , date_queued TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    , date_started TEXT NOT NULL
+    , date_finished TEXT NOT NULL
+    , outcome TEXT NOT NULL
     , FOREIGN KEY(package_id) REFERENCES media_packages(package_id) ON DELETE RESTRICT
     , FOREIGN KEY(src_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT
     , FOREIGN KEY(dst_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT

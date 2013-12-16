@@ -140,17 +140,19 @@ class JobQueueManager():
         job_manager = JobManager(db_manager, self.logger)
         
         while job_manager.is_alive():
+            # Figure out how to thow the job off to a separate thread here...
             job = job_manager.get_next_job()
 
             if job:
-                self.logger.info('Starting job {0}'.format(job.getid()))
+                self.logger.info('Starting job {0}'.format(job.get_id()))
+                job.report_started()
                 job.execute()
 
                 if job.completed():
-                    self.logger.info('Finished job {0}'.format(job.getid()))
+                    self.logger.info('Finished job {0}'.format(job.get_id()))
                     job.report_complete()
                 else:
-                    self.logger.info('Issue with job {0}'.format(job.getid()))
+                    self.logger.info('Issue with job {0}'.format(job.get_id()))
                     job.report_failed()
             else:
                 self.logger.info('Job queue is empty.')
