@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from manager.manager import JobQueueManager
+from lib.manager import JobQueueManager
 
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'

@@ -7,6 +7,48 @@ class JobManager():
 
     """
 
+    class Job():
+        def __init__(self, config_tuple):
+
+            tuple_mapping = ['job_id', 'package_id', 'src_client_id', 'dst_client_id', 'action_id']
+            for (i,key) in enumerate(tuple_mapping):
+                setattr(self, key, config_tuple[i])
+
+        def getid(self):
+            return self.job_id
+
+        def completed(self):
+            """
+            Place-holder no idea how I'll implement
+            """
+
+        def execute(self):
+            """
+            Place-holder no idea how I'll implement
+            """
+            pass
+    
+        def report_start(self):
+            """
+            Reports back that we have started the job
+            """
+            pass
+
+
+        def report_complete(self):
+            """
+            Reports back that we have finished the job
+            """
+            pass
+
+
+        def report_failed(self):
+            """
+            Reports back that we have failed the job
+            """
+            pass
+
+
     def __init__(self, db_manager, logger):
         """
         Sets up the DB and the logger
@@ -39,7 +81,7 @@ class JobManager():
         """
 
         self.db.execute(self.SQL['get_job'].format(job_id))
-        return self.db.fetchone()
+        return self.Job(self.db.fetchone())
 
 
     def get_next_job(self):
@@ -48,31 +90,9 @@ class JobManager():
         """
 
         self.db.execute(self.SQL['next_job'])
-        return self.db.fetchone()
+        return self.Job(self.db.fetchone())
 
 
-    def report_start(self, job_id):
-        """
-        Reports back that we have started the given job_id
-        """
-
-        pass
-
-
-    def report_complete(self, job_id):
-        """
-        Reports back that we have finished the given job_id
-        """
-
-        pass
-
-
-    def report_failed(self, job_id):
-        """
-        Reports back that we have failed the given job_id
-        """
-
-        pass
 
 
 #
@@ -103,4 +123,5 @@ if __name__ == '__main__':
     job_manager = JobManager( db_manager, logger )
 
     if job_manager.is_alive():
-        print(job_manager.get_next_job())
+        job = job_manager.get_next_job()
+        print(job.getid())

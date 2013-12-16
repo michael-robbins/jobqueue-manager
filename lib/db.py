@@ -6,14 +6,14 @@ class DBManager():
     Generic DB functions in here, will be specialised per DB type (PostgreSQL, MySQL, SQLLite)
     """
 
-    def __init__(self, config, logger):
+    def __init__(self, config, required_opts, logger):
         """
         Set up the connection string details
         """
 
         self.logger = logger
 
-        for opt in self._required_db_opts:
+        for opt in required_opts:
             if opt in config:
                 setattr(self, opt, config[opt])
             else:
@@ -47,8 +47,8 @@ class Postgres_DBManager(DBManager):
         Set any psql specific stuff and bail to parent class
         """
 
-        self._required_db_opts = ['db_type', 'db_host', 'db_port', 'db_name', 'db_user']
-        DBManager.__init__(self, config, logger)
+        required_opts = ['db_type', 'db_host', 'db_port', 'db_name', 'db_user']
+        DBManager.__init__(self, config, required_opts, logger)
 
     def get_cursor(self):
         """
@@ -93,8 +93,8 @@ class SQLite3_DBManager(DBManager):
         Set any Sqlite3 specific stuff and bail to parent class
         """
 
-        self._required_db_opts = ['db_type', 'db_name', 'db_file']
-        DBManager.__init__(self, config, logger)
+        required_opts = ['db_type', 'db_name', 'db_file']
+        DBManager.__init__(self, config, required_opts, logger)
 
 
     def get_cursor(self):

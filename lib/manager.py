@@ -1,8 +1,7 @@
-from manager.db import DBManager
-
-from manager.sync import SyncManager
-from manager.jobs import JobManager
-from manager.logging import Logging
+import db
+from sync import SyncManager
+from jobs import JobManager
+from logger import Logger
 
 import os
 import sys
@@ -46,12 +45,14 @@ class JobQueueManager():
                     if option not in self.config.options(section):
                         print('ERROR: Missing Option', option, 'inside section:', section)
 
-        self.logger = Logging(self.config['DAEMON']['log_name']
+        self.logger = Logger(self.config['DAEMON']['log_name']
                     , self.config['DAEMON']['log_file']).get_logger()
 
         for i in self.config.sections():
             for j in self.config.options(i):
                 self.logger.debug('{0}: {1}={2}'.format(i,j,self.config[i][j]))
+
+        self.pidfile = self.config['DAEMON']['pid_file']
 
 
     #
@@ -126,31 +127,40 @@ class JobQueueManager():
         Main worker loop
         """
 
-        db_manager  = DBManager(self.config['MANAGER'], self.logger)
-        job_manager = JobManager(db_manager.get_cursor(), self.logger)
+        if self.config['MANAGER']['db_type'] == 'psql':
+            db_manager = db.Postgres_DBManager(self.config['MANAGER'], self.logger)
+        elif self.config['MANAGER']['db_type'] == 'sqlite3':
+            db_manager = db.SQLite3_DBManager(self.config['MANAGER'], self.logger)
+        else:
+            db_manager = None
+            self.logger.error('Unsupport db_type in the config file')
+            assert db_manager
+
+
+        job_manager = JobManager(db_manager, self.logger)
         
         while job_manager.is_alive():
             job = job_manager.get_next_job()
 
             if job:
-                self.logger.notice('Starting job {0}'.format(job.getid()))
+                self.logger.info('Starting job {0}'.format(job.getid()))
                 job.execute()
 
                 if job.completed():
-                    self.logger.notice('Finished job {0}'.format(job.getid()))
+                    self.logger.info('Finished job {0}'.format(job.getid()))
                     job.report_complete()
                 else:
-                    self.logger.notice('Issue with job {0}'.format(job.getid()))
+                    self.logger.info('Issue with job {0}'.format(job.getid()))
                     job.report_failed()
             else:
-                self.logger.notice('Job queue is empty.')
+                self.logger.info('Job queue is empty.')
             
             sleep_time = float(self.config['MANAGER']['sleep'])
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
         if not job_manager.isalive():
-            self.logger.notice('job_manager.isalive() is false, exiting')
+            self.logger.info('job_manager.isalive() is false, exiting')
             return True
         else:
             self.logger.error('We exited the while loop but are supposedly still alive')
@@ -178,17 +188,18 @@ class JobQueueManager():
         
         # Turn into a daemon if we are told to
         if self.daemon_mode:
-            print('NOTICE: We are about to turn into a daemon, no more stdout!')
+            print('INFO: We are about to turn into a daemon, no more stdout!')
             self.daemonize()
             self.logger.debug('We are now a daemon, congrats')
         else:
-            print('NOTICE: Skipping daemon mode, all to stdout')
+            print('INFO: Skipping daemon mode')
+            print('INFO: Log file: ' + self.config['DAEMON']['log_file'])
 
         # Work our magic
         self.run()
 
         # Finishing up properly
-        self.logger.notice('Finished successfully, bye bye!')
+        self.logger.info('Finished successfully, bye bye!')
 
 
     #
@@ -210,5 +221,7 @@ if __name__ == '__main__':
     """
     Peform some basic checks
     """
-    jqm = JobQueueManager()
+
+    conf = '/home/michael/Development/code/jobqueue_manager/default.conf'
+    jqm = JobQueueManager(conf, False, False)
     jqm.start()
