@@ -4,13 +4,11 @@
 class JobManager():
     """
     Used to manage jobs and extract info from the JobManager database
-
     """
 
     class Job():
 
         from sync import SyncManager
-
 
         def __init__(self, db_manager, config_tuple):
             """
@@ -28,6 +26,7 @@ class JobManager():
                     , 'date_queued'
                     , 'date_started'
                     , 'date_finished'
+                    , 'pid'
                     , 'outcome'
                 ]
 
@@ -79,7 +78,27 @@ class JobManager():
             """
             Get the... id?
             """
+
             return self.job_id
+
+        def get_pid(self):
+            """
+            Get the PID
+            """
+
+            return self.pid
+
+        def set_pid(self, pid):
+            """
+            Set the PID
+            """
+
+            self.pid = pid
+
+            if self.pid == pid:
+                return True
+            else:
+                return False
 
         def completed(self):
             """
@@ -95,8 +114,10 @@ class JobManager():
 
         def execute(self):
             """
-            Execute Job:
+            Execute Job (this function should be forked correctly from manager):
+            * Save the PID of this process
             * Run SyncManager over the job
+            * Return what SyncManager reports
             """
             pass
     
@@ -104,6 +125,7 @@ class JobManager():
             """
             Reports back that we have started the job
             """
+
             self.db.execute( self.SQL['start_job'], (self.job_id) )
             self.reload_job()
 
@@ -111,6 +133,7 @@ class JobManager():
             """
             Reports back that we have finished the job
             """
+
             self.db.execute( self.SQL['finish_job'], (self.job_id) )
             self.db.execute( self.SQL['archive_job'], ('Complete', self.job_id) )
             self.db.execute( self.SQL['delete_job'], (self.job_id) )
@@ -120,6 +143,7 @@ class JobManager():
             """
             Reports back that we have failed the job
             """
+
             self.db.execute( self.SQL['finish_job'], (self.job_id) )
             self.db.execute( self.SQL['archive_job'], ('Failed', self.job_id) )
             self.db.execute( self.SQL['delete_job'], (self.job_id) )

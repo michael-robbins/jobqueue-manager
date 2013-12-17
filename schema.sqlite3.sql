@@ -74,9 +74,10 @@ CREATE TABLE media_packages (
     , FOREIGN KEY(package_type_id) REFERENCES media_package_types(package_type_id) ON DELETE RESTRICT
 );
 
--- Each file belongs to a package
+-- Each file belongs to a package (hash is sha256)
 CREATE TABLE media_files (
     file_id INTEGER PRIMARY KEY AUTOINCREMENT
+    , hash TEXT NOT NULL
     , relative_path TEXT NOT NULL
     , date_last_index TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -118,6 +119,7 @@ CREATE TABLE job_queue (
     , date_queued TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     , date_started TEXT DEFAULT NULL
     , date_finished TEXT DEFAULT NULL
+    , pid INTEGER DEFAULT NULL
     , FOREIGN KEY(package_id) REFERENCES media_packages(package_id) ON DELETE RESTRICT
     , FOREIGN KEY(src_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT
     , FOREIGN KEY(dst_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT
@@ -134,6 +136,7 @@ CREATE TABLE job_history (
     , date_queued TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     , date_started TEXT NOT NULL
     , date_finished TEXT NOT NULL
+    , pid INTEGER NOT NULL
     , outcome TEXT NOT NULL
     , FOREIGN KEY(package_id) REFERENCES media_packages(package_id) ON DELETE RESTRICT
     , FOREIGN KEY(src_client_id) REFERENCES clients(client_id) ON DELETE RESTRICT

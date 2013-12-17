@@ -66,9 +66,10 @@ CREATE TABLE media_packages (
     , is_archived BOOLEAN DEFAULT false
 );
 
+-- Each file belongs to a package (hash is sha256)
 CREATE TABLE media_files (
-    -- Each file belongs to a package
     file_id SERIAL PRIMARY KEY
+    , hash VARCHAR(64) NOT NULL
     , relative_path VARCHAR(256) NOT NULL -- This is relative to the clients base_path
     , date_last_index TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Time the file was last indexed
 );
@@ -104,6 +105,7 @@ CREATE TABLE job_queue (
     , date_queued TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     , date_started TIMESTAMP WITH TIME ZONE DEFAULT NULL
     , date_completed TIMESTAMP WITH TIME ZONE DEFAULT NULL
+    , pid INTEGER DEFAULT NULL
 );
 
 CREATE TABLE job_history (
@@ -116,6 +118,7 @@ CREATE TABLE job_history (
     , date_queued TIMESTAMP WITH TIME ZONE NOT NULL
     , date_started TIMESTAMP WITH TIME ZONE NOT NULL
     , date_completed TIMESTAMP WITH TIME ZONE NOT NULL
+    , pid INTEGER DEFAULT NULL
     , outcome VARCHAR(255) NOT NULL
 );
 
@@ -175,5 +178,6 @@ INSERT INTO media_tv_links VALUES (3, 4);
 INSERT INTO media_tv_links VALUES (3, 5);
 
 -- Create a test job, pushing Prometheus to the Client from the Server
--- INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL); -- package(2) from client(1) to client(2) with action(1)
+-- package(2) from client(1) to client(2) with action(1)
+INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL, NULL);
 

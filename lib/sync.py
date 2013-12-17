@@ -1,3 +1,5 @@
+import subprocess
+
 class SyncManager():
     """
     Handles pushing media files around the various clients
@@ -6,40 +8,74 @@ class SyncManager():
     def __init__(self):
         pass
 
-    def run_in_shell(self):
+    def run_in_shell(self, :
         pass
 
-    def transfer_file(self, source, destination, client, action='push'):
+    def build_shell_command(self, file_details, client_id, action_id):
         """
-        Takes a file (source & destination) and either:
-            * push: Pushes it out to a client from the server (default)
-            * pull: Pulls it from the client to the server
+        From the given file_details:
+        1. From the given action
+        """
+
+
+
+    def transfer_package(self, package_id, src_client_id, dst_client_id, action_id):
+        """
+        Transfers a package between clients (or deletes/etc depending on action_id)
+        1. bad_src_files = verify_package(package_id, src_client_id)
+            1.1. Return False if bad_src_files
+        2. bad_dst_files = verify_package(package_id, dst_client_id)
+        3. for file_id in ( bad_dst_files || get_package_files(package_id) )
+            3.1. if action == 'SYNC':
+                3.1.1. transfer_file(file_id, src_client_id, dst_client_id, action_id)
+                3.1.2. if not verify_file(file_id, dst_client_id): bad_files.append(file_id)
+            3.2. if action == 'DEL':
+                3.2.1. delete_file(file_id, dst_client_id)
+                3.2.2. if verify_file(file_id, dst_client_id): bad_files.append(file_id)
+            3.3. else (Unknown action, bail out here?)
+        4. If bad_files: return bad_files
+        5. if action == 'SYNC':
+            5.1. return verify_package(package_id, dst_client_id)
+        6. if action == 'DEL':
+            6.1. return not verify_package(package_id, dst_client_id)
         """
         pass
 
-    def verify_remote_file(self, source, destination, client):
+    def transfer_file(self, file_id, src_client_id, dst_client_id):
         """
-        Takes a file (source & destination) and does the following:
-            1. Hash the local file
-            2. Hash the remote file on the client
-            3. Compares hashes and returns the result:
-                * True  = match
-                * False = non-match
+        Takes a file and performs an action on it (after verifying action needs to be taken)
+        1. verify_file(file_id, src_client_id)
+        2. verify_file(file_id, dst_client_id)
+        3. Take action on file (sync,delete,etc)
+            3.1. Sys
+        4. verify_file(file_id, dst_client_id)
         """
         pass
 
-    def verify_remote_package(self, package, client):
+    def delete_file(self, file_id, client_id):
         """
-        Takes a single Media Package and ensures it exists on the client:
-            * Get list of files from package
-            * Check each file exists on the client
+        Deletes a file off the client
+        1. 
+        """
+        pass
 
-            Example:
-            for (local_file, remote_file) in MediaPackageManager.get_files(package, client):
-                self.verify_remote_file(
-                    MediaPackageManager.configure_for_server(local_file
-                    , MediaPackageManager.configure_for_client(client_file)
-                    , client)
+    def verify_package(self, package_id, client_id):
+        """
+        Takes a single package and ensures it exists on the client
+        1. for file_id in get_package_files(package_id)
+            1.1. verify_file(file_id, client_id)
+        2. If verify_file returned False add to bad_files set
+
+        Returns: bad_files set
+        """
+        pass
+
+    def verify_file(self, file_id, client_id):
+        """
+        1. file = get_file(file_id)
+        2. Perform remote file existence check
+        3. Perform remote hash of file
+        4. Return False on missing or hash check fail
         """
         pass
 
