@@ -122,6 +122,7 @@ CREATE TABLE job_history (
     , outcome VARCHAR(255) NOT NULL
 );
 
+
 --
 -- Initial inserts to get a prototype working
 --
@@ -142,19 +143,110 @@ INSERT INTO media_package_types VALUES (DEFAULT, 'TV Season'); -- 3
 INSERT INTO clients VALUES (DEFAULT, 1, 'Media Server', 'atlas', 22, '/data/media');        -- 1
 INSERT INTO clients VALUES (DEFAULT, 2, 'Media Player', 'prometheus'  , 22, '/data/media'); -- 2
 
-INSERT INTO media_packages VALUES (DEFAULT, 1, 'Movie 1', 'Movie 1 (2009)', '', NOW(), NULL, false);        -- 1
-INSERT INTO media_packages VALUES (DEFAULT, 1, 'Movie 2', 'Movie 2 (2012)', '', NOW(), NULL, false);        -- 2
-INSERT INTO media_packages VALUES (DEFAULT, 2, 'TV Show 1 - Base', 'TV Show 1', '', NOW(), NULL, false);    -- 3
-INSERT INTO media_packages VALUES (DEFAULT, 3, 'TV Show 1 - Season 1', 'Season 1', '', NOW(), NULL, false); -- 4
-INSERT INTO media_packages VALUES (DEFAULT, 3, 'TV Show 1 - Season 2', 'Season 2', '', NOW(), NULL, false); -- 5
+INSERT INTO media_packages VALUES (
+    DEFAULT
+    , 1
+    , 'Movie 1'
+    , 'Movie 1 (2009)'
+    , ''
+    , NOW()
+    , NULL
+    , false
+); -- 1
 
-INSERT INTO media_files VALUES (DEFAULT, 'Movie 1 (2009).mkv', NOW());                      -- 1
-INSERT INTO media_files VALUES (DEFAULT, 'Movie 1 (2009).xml', NOW());                      -- 2
-INSERT INTO media_files VALUES (DEFAULT, 'Movie 2 (2012) 1080p.mkv', NOW());            -- 3
-INSERT INTO media_files VALUES (DEFAULT, 'TV Show 1 - Base.xml', NOW());               -- 4
-INSERT INTO media_files VALUES (DEFAULT, 'TV Show 1 S01E01 - Epp 1.mkv', NOW());  -- 5
-INSERT INTO media_files VALUES (DEFAULT, 'TV Show 1 S02E02 - Epp 2.mkv', NOW()); -- 6
-INSERT INTO media_files VALUES (DEFAULT, 'TV Show 1 S02E02 - Epp 2.xml', NOW()); -- 7
+INSERT INTO media_packages VALUES (
+    DEFAULT
+    , 1
+    , 'Movie 2'
+    , 'Movie 2 (2012)'
+    , ''
+    , NOW()
+    , NULL
+    , false
+); -- 2
+
+INSERT INTO media_packages VALUES (
+    DEFAULT
+    , 2
+    , 'TV Show 1 - Base'
+    , 'TV Show 1'
+    , ''
+    , NOW()
+    , NULL
+    , false
+); -- 3
+
+INSERT INTO media_packages VALUES (
+    DEFAULT
+    , 3
+    , 'TV Show 1 - Season 1'
+    , 'Season 1'
+    , ''
+    , NOW()
+    , NULL
+    , false
+); -- 4
+
+INSERT INTO media_packages VALUES (
+    DEFAULT
+    , 3
+    , 'TV Show 1 - Season 2'
+    , 'Season 2'
+    , ''
+    , NOW()
+    , NULL
+    , false
+); -- 5
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 1 (2009).mkv'
+    , NOW()
+); -- 1
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 1 (2009).xml'
+    , NOW()
+); -- 2
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 2 (2012) 1080p.mkv'
+    , NOW()
+); -- 3
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 - Base.xml'
+    , NOW()
+); -- 4
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S01E01 - Epp 1.mkv'
+    , NOW()
+); -- 5
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S02E02 - Epp 2.mkv'
+    , NOW()
+); -- 6
+
+INSERT INTO media_files VALUES (
+    DEFAULT
+    , 'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S02E02 - Epp 2.xml'
+    , NOW()
+); -- 7
+
 
 -- Link tables
 INSERT INTO media_package_files VALUES (1, 1);

@@ -1,13 +1,14 @@
 import db
-from sync import SyncManager
-from jobs import JobManager
-from logger import Logger
-
 import os
 import sys
 import time
 import atexit
-import configparser
+
+from logger import Logger
+from jobs   import JobManager
+from sync   import SyncManager
+from config import ConfigManager
+
 
 #
 #
@@ -30,27 +31,13 @@ class JobQueueManager():
         """
         Parse config file and setup the logging
         """
-
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file)
-
-        self.verbose=verbose
-        self.daemon_mode=daemon_mode
-
-        for section in self.required_config:
-            if section not in self.config.sections():
-                print('ERROR: Missing config_file section:', section)
-            else:
-                for option in self.required_config[section]:
-                    if option not in self.config.options(section):
-                        print('ERROR: Missing Option', option, 'inside section:', section)
+        
+        self.config  = ConfigManager(config_file).get_config()
+        self.verbose = verbose
+        self.daemon_mode = daemon_mode
 
         self.logger = Logger(self.config['DAEMON']['log_name']
                     , self.config['DAEMON']['log_file']).get_logger()
-
-        for i in self.config.sections():
-            for j in self.config.options(i):
-                self.logger.debug('{0}: {1}={2}'.format(i,j,self.config[i][j]))
 
         self.pidfile = self.config['DAEMON']['pid_file']
 
@@ -145,7 +132,6 @@ class JobQueueManager():
 
             if job:
                 self.logger.info('Starting job {0}'.format(job.get_id()))
-                job.report_started()
                 job.execute()
 
                 if job.completed():
@@ -220,10 +206,6 @@ class JobQueueManager():
 #
 #
 if __name__ == '__main__':
-    """
-    Peform some basic checks
-    """
-
-    conf = '/home/michael/Development/code/jobqueue_manager/default.conf'
-    jqm = JobQueueManager(conf, False, False)
-    jqm.start()
+    from tester import TestManager
+    tester = TestManager()
+    tester.test_JobQueueManager()

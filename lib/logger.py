@@ -26,13 +26,7 @@ class Logger():
         return self.logger
 
 if __name__ == '__main__':
-    log_file = '/tmp/test.log'
-
-    if os.path.exists(log_file):
-        os.remove(log_file)
-
-    logger = Logger('test',log_file).get_logger()
-    logger.debug('test')
-    with open(log_file, 'r') as f:
-        print(f.read())
+    from tester import TestManager
+    tester = TestManager()
+    tester.test_Logger()
 

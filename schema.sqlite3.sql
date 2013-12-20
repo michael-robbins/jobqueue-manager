@@ -163,88 +163,102 @@ INSERT INTO media_package_types (name) VALUES ('TV Season'); -- 3
 
 -- Data tables, required for link tables
 INSERT INTO clients (
-        client_type_id, name, sync_hostname, sync_port, base_path
-    ) VALUES (
-        1, 'Media Server', 'atlas', 22, '/data/media'
-    ); -- 1
+    client_type_id, name, sync_hostname, sync_port, base_path
+) VALUES (
+    1, 'Media Server', 'atlas', 22, '/data/media'
+); -- 1
 
 INSERT INTO clients (
-        client_type_id, name, sync_hostname, sync_port, base_path
-    ) VALUES (
-        2, 'Media Player', 'prometheus', 22, '/data/media'
-    ); -- 2
+    client_type_id, name, sync_hostname, sync_port, base_path
+) VALUES (
+    2, 'Media Player', 'prometheus', 22, '/data/media'
+); -- 2
 
 INSERT INTO media_packages (
-        package_type_id, name, folder_name, metadata_json
-    ) VALUES (
-        1, 'Movie 1', 'Movie 1 (2009)', ''
-    ); -- 1
+    package_type_id, name, folder_name, metadata_json
+) VALUES (
+    1, 'Movie 1', 'Movie 1 (2009)', ''
+); -- 1
 
 INSERT INTO media_packages (
-        package_type_id, name, folder_name, metadata_json
-    ) VALUES (
-        1, 'Movie 2', 'Movie 2 (2012)', ''
-    ); -- 2
+    package_type_id, name, folder_name, metadata_json
+) VALUES (
+    1, 'Movie 2', 'Movie 2 (2012)', ''
+); -- 2
 
 INSERT INTO media_packages (
-        package_type_id, name, folder_name, metadata_json
-    ) VALUES (
-        2, 'TV Show 1 - Base', 'TV Show 1', ''
-    ); -- 3
+    package_type_id, name, folder_name, metadata_json
+) VALUES (
+    2, 'TV Show 1 - Base', 'TV Show 1', ''
+); -- 3
 
 INSERT INTO media_packages (
-        package_type_id, name, folder_name, metadata_json
-    ) VALUES (
-        3, 'TV Show 1 - Season 1', 'Season 1', ''
-    ); -- 4
+    package_type_id, name, folder_name, metadata_json
+) VALUES (
+    3, 'TV Show 1 - Season 1', 'Season 1', ''
+); -- 4
 
 INSERT INTO media_packages (
-        package_type_id, name, folder_name, metadata_json
-    ) VALUES (
-        3, 'TV Show 1 - Season 2', 'Season 2', ''
-    ); -- 5
+    package_type_id, name, folder_name, metadata_json
+) VALUES (
+    3, 'TV Show 1 - Season 2', 'Season 2', ''
+); -- 5
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'Movie 1 (2009).mkv'
-    ); -- 1
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 1 (2009).mkv'
+); -- 1
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'Movie 1 (2009).xml'
-    ); -- 2
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 1 (2009).xml'
+); -- 2
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'Movie 2 (2012) 1080p.mkv'
-    ); -- 3
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'Movie 2 (2012) 1080p.mkv'
+); -- 3
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'TV Show 1 - Base.xml'
-    ); -- 4
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 - Base.xml'
+); -- 4
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'TV Show 1 S01E01 - Epp 1.mkv'
-    ); -- 5
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S01E01 - Epp 1.mkv'
+); -- 5
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'TV Show 1 S02E02 - Epp 2.mkv'
-    ); -- 6
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S02E02 - Epp 2.mkv'
+); -- 6
 
 INSERT INTO media_files (
-        relative_path
-    ) VALUES (
-        'TV Show 1 S02E02 - Epp 2.xml'
-    ); -- 7
+    hash
+    , relative_path
+) VALUES (
+    'f793f8029fd2fde733020b6f1aa341e06bf3c222b8c0d46cd867066b4db31623'
+    , 'TV Show 1 S02E02 - Epp 2.xml'
+); -- 7
 
 -- Link tables
 INSERT INTO media_package_files (package_id, file_id) VALUES (1, 1);

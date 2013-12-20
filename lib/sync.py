@@ -8,7 +8,7 @@ class SyncManager():
     def __init__(self):
         pass
 
-    def run_in_shell(self, :
+    def run_in_shell(self):
         pass
 
     def build_shell_command(self, file_details, client_id, action_id):
@@ -80,4 +80,6 @@ class SyncManager():
         pass
 
 if __name__ == '__main__':
-    sync_manager = SyncManager()
+    #from tester import TestManager
+    #tester = TestManager()
+    #tester.test_SyncManager()
