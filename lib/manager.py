@@ -128,18 +128,12 @@ class JobQueueManager():
         
         while job_manager.is_alive():
             # Figure out how to thow the job off to a separate thread here...
+            # Another fork? Or perhaps a threading class
             job = job_manager.get_next_job()
 
             if job:
-                self.logger.info('Starting job {0}'.format(job.get_id()))
+                self.logger.info('Starting job {0}'.format(job.job_id))
                 job.execute()
-
-                if job.completed():
-                    self.logger.info('Finished job {0}'.format(job.get_id()))
-                    job.report_complete()
-                else:
-                    self.logger.info('Issue with job {0}'.format(job.get_id()))
-                    job.report_failed()
             else:
                 self.logger.info('Job queue is empty.')
             

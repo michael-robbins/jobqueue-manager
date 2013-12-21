@@ -44,7 +44,7 @@ class SyncManager():
     #
     #
     #
-    def transfer_package(self, package_id, src_client_id, dst_client_id, action_id):
+    def handle_package(self, package_id, src_client_id, dst_client_id, action_id):
         """
         Transfers a package between clients (or deletes/etc depending on action_id)
         1. bad_src_files = verify_package(package_id, src_client_id)
@@ -75,10 +75,8 @@ class SyncManager():
         Takes a file and performs an action on it (after verifying action needs to be taken)
         1. Sync file_id between source and destination
             Find out:
-                - Full source path:
-                    '/'.join([SRC_CLIENT_PATH, PACKAGE_REL_PATH, FILE_REL_PATH])
-                - Full destination path: 
-                    '/'.join([DST_CLIENT_PATH, PACKAGE_REL_PATH, FILE_REL_PATH])
+                - Full source path:      create_client_file_path(file_id, src_client_id)
+                - Full destination path: create_client_file_path(file_id, dst_client_id)
                 - Address details of source (hostname & port)
                 - Address details of destination (hostname & port)
 
@@ -93,7 +91,8 @@ class SyncManager():
     def delete_file(self, file_id, client_id):
         """
         Deletes a file off the client
-        1. 
+        1. if verify_file(file_id, client_id)
+            1.1. '/'.join([DST_CLIENT_PATH]
         """
         pass
 
@@ -124,6 +123,7 @@ class SyncManager():
         4. Return False on missing or hash check fail
         """
         pass
+
 
 if __name__ == '__main__':
     #from tester import TestManager
