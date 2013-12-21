@@ -97,19 +97,6 @@ class JobManager():
         #
         #
         #
-        def completed(self):
-            """
-            * Verify the Job PID is not running
-            """
-
-            cursor = self.db_manager.get_cursor()
-            
-            row = cursor.execute(self.SQL['get_job'], self.job_id
-
-
-        #
-        #
-        #
         def execute(self):
             """
             Execute Job (this function should be forked correctly from manager):

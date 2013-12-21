@@ -27,7 +27,7 @@ class ConfigManager():
     #
     #
     #
-    def __init__(self, config_file, logger):
+    def __init__(self, config_file):
         """
         Parse config file
         """

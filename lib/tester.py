@@ -78,7 +78,7 @@ class TestManager():
         logger = self.get_test_logger(test_name)
 
         from config import ConfigManager
-        config = ConfigManager(self.config_file, logger).get_config()
+        config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
@@ -110,7 +110,7 @@ class TestManager():
         logger = self.get_test_logger(test_name)
 
         from config import ConfigManager
-        config = ConfigManager(self.config_file, logger).get_config()
+        config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
@@ -157,3 +157,23 @@ class TestManager():
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
+
+
+#
+#
+#
+if __name__ == '__main__':
+    """
+    Run through all test_*'s we have created
+    """
+
+    tester = TestManager()
+
+    # Run through the test cases we have so far
+    # (no way of dynamically figuring out what we have coded so far)
+    # (maybe something like getattr on self.test_* ?
+    tester.test_Logger()
+    tester.test_DBManager()
+    tester.test_JobManager()
+    tester.test_JobQueueManager()
+    #tester.test_SyncManager() # Not written yet
