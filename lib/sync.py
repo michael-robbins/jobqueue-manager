@@ -1,24 +1,49 @@
 import subprocess
 
+
+#
+#
+#
 class SyncManager():
     """
     Handles pushing media files around the various clients
     """
 
+    #
+    #
+    #
     def __init__(self):
         pass
 
-    def run_in_shell(self):
+
+    #
+    #
+    #
+    def rsync_file(self, src_details, dst_details):
+        """
+        src_details[address] = 'files.source.com'
+        src_details[port]    = '8080'
+        src_details[file]    = '/path/to/source/file'
+
+        dst_details[address] = 'files.destination.com'
+        dst_details[port]    = '8080'
+        dst_details[file]    = '/path/to/destination/file'
+
+        subprocess call to:
+            rsync
+                --verbose
+                --partial
+                --compress
+                --rsh='ssh -p'+dst_details[port]
+                src_details[file]
+                dst_details[address]:dst_details[file]
+        """
         pass
 
-    def build_shell_command(self, file_details, client_id, action_id):
-        """
-        From the given file_details:
-        1. From the given action
-        """
 
-
-
+    #
+    #
+    #
     def transfer_package(self, package_id, src_client_id, dst_client_id, action_id):
         """
         Transfers a package between clients (or deletes/etc depending on action_id)
@@ -41,17 +66,30 @@ class SyncManager():
         """
         pass
 
+
+    #
+    #
+    #
     def transfer_file(self, file_id, src_client_id, dst_client_id):
         """
         Takes a file and performs an action on it (after verifying action needs to be taken)
-        1. verify_file(file_id, src_client_id)
-        2. verify_file(file_id, dst_client_id)
-        3. Take action on file (sync,delete,etc)
-            3.1. Sys
-        4. verify_file(file_id, dst_client_id)
+        1. Sync file_id between source and destination
+            Find out:
+                - Full source path:
+                    '/'.join([SRC_CLIENT_PATH, PACKAGE_REL_PATH, FILE_REL_PATH])
+                - Full destination path: 
+                    '/'.join([DST_CLIENT_PATH, PACKAGE_REL_PATH, FILE_REL_PATH])
+                - Address details of source (hostname & port)
+                - Address details of destination (hostname & port)
+
+        2. return verify_file(file_id, dst_client_id)
         """
         pass
 
+
+    #
+    #
+    #
     def delete_file(self, file_id, client_id):
         """
         Deletes a file off the client
@@ -59,6 +97,10 @@ class SyncManager():
         """
         pass
 
+
+    #
+    #
+    #
     def verify_package(self, package_id, client_id):
         """
         Takes a single package and ensures it exists on the client
@@ -70,6 +112,10 @@ class SyncManager():
         """
         pass
 
+
+    #
+    #
+    #
     def verify_file(self, file_id, client_id):
         """
         1. file = get_file(file_id)
@@ -83,3 +129,4 @@ if __name__ == '__main__':
     #from tester import TestManager
     #tester = TestManager()
     #tester.test_SyncManager()
+    pass
