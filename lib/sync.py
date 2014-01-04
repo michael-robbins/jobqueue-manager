@@ -52,11 +52,10 @@ class SyncManager():
         2. bad_dst_files = verify_package(package_id, dst_client_id)
         3. for file_id in ( bad_dst_files || get_package_files(package_id) )
             3.1. if action == 'SYNC':
-                3.1.1. transfer_file(file_id, src_client_id, dst_client_id, action_id)
-                3.1.2. if not verify_file(file_id, dst_client_id): bad_files.append(file_id)
+                3.1.1. result = transfer_file(file_id, src_client_id, dst_client_id, action_id)
             3.2. if action == 'DEL':
-                3.2.1. delete_file(file_id, dst_client_id)
-                3.2.2. if verify_file(file_id, dst_client_id): bad_files.append(file_id)
+                3.2.1. result = delete_file(file_id, dst_client_id)
+                3.2.2. if not result: bad_files.append(file_id)
             3.3. else (Unknown action, bail out here?)
         4. If bad_files: return bad_files
         5. if action == 'SYNC':
@@ -79,7 +78,6 @@ class SyncManager():
                 - Full destination path: create_client_file_path(file_id, dst_client_id)
                 - Address details of source (hostname & port)
                 - Address details of destination (hostname & port)
-
         2. return verify_file(file_id, dst_client_id)
         """
         pass
@@ -93,6 +91,8 @@ class SyncManager():
         Deletes a file off the client
         1. if verify_file(file_id, client_id)
             1.1. '/'.join([DST_CLIENT_PATH]
+            1.2. Shell out to ssh call to delete remote file
+        2. return not verify_file(file_id, dst_client_id)
         """
         pass
 

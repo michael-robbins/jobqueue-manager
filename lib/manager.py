@@ -18,12 +18,6 @@ class JobQueueManager():
     Handles the monitoring of the JobQueue and runs jobs
     """
 
-    required_config = {
-            'MANAGER'  : ['db_type', 'db_host', 'db_port', 'db_name', 'db_user', 'db_file', 'sleep']
-            , 'DAEMON' : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask']
-            }
-
-
     #
     #
     #
