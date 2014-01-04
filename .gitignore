@@ -31,3 +31,6 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Files we dont want in version control
+*.db
