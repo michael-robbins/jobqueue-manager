@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
+import sys
 import argparse
-from lib.manager import JobQueueManager
+
+sys.path.append('lib/')
+
+from manager import JobQueueManager
+
 
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'

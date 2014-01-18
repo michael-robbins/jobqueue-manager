@@ -1,9 +1,12 @@
-import db
+
+# System imports
 import os
 import sys
 import time
 import atexit
 
+# Program imports
+import db
 from logger import Logger
 from jobs   import JobManager
 from sync   import SyncManager
