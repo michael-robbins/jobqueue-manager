@@ -51,9 +51,8 @@ class ConfigManager():
             for option in self.required_config[section]:
                 if option in self.additional_config and option in self.config.options(section):
                     # if the option has extra paramaters based (E.g. DB Type)
-                    self.required_config[section].append(
-                            self.additional_config[option][self.config[section][option]]
-                        )
+                    for i in self.additional_config[option][self.config[section][option]]:
+                        self.required_config[section].append(i)
 
         # Run through everything (post additional config additions) and check it all exists
         for section in self.required_config:
