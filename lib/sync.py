@@ -21,6 +21,8 @@ class SyncManager():
     #
     def rsync_file(self, src_details, dst_details):
         """
+        Supports sending a file from a [local|remote] source to its opposite [remote|local] destination
+
         src_details[address] = 'files.source.com'
         src_details[port]    = '8080'
         src_details[file]    = '/path/to/source/file'
@@ -38,7 +40,31 @@ class SyncManager():
                 src_details[file]
                 dst_details[address]:dst_details[file]
         """
-        pass
+        command = ['rsync', '-v', '--progress', '--verbose', '--compress']
+
+        if ('address' in src_details or 'port' in src_details)
+                and ('address' in dst_details or 'port' in dst_details):
+            print "ERROR: Cannot have both as remote hosts"
+            return False
+
+        if 'port' in src_details:
+            command.append("--rsh='ssh -p{0}'".format(src_details[port]))
+        elif 'port' in dst_details:
+            command.append("--rsh='ssh -p{0}'".format(dst_details[port]))
+        else:
+            print "WARNING: Assuming port of 22 for rsync call"
+
+        if 'address' in src_details:
+            command.append("\"{0}:{1}\"".format(src_details[address], src_details[file]))
+        else:
+            command.append("\"{0}\"".format(src_details[file]))
+
+        if 'address' in dst_details:
+            command.append("\"{0}:{1}\"".format(dst_details[address], dst_details[file]))
+        else:
+            command.append("\"{0}\"".format(dst_details[file]))
+
+        print("DEBUG: RSYNC COMMAND: {0}".format(" ".join(command)))
 
 
     #
