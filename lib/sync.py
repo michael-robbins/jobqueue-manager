@@ -1,5 +1,6 @@
 import os
 import sys
+import shlex
 import subprocess
 
 
@@ -11,9 +12,16 @@ class SyncManager():
     Handles pushing media files around the various clients
     """
     
+    HOST_USER    = 'user'
     HOST_ADDRESS = 'address'
     HOST_PORT    = 'port'
     HOST_FILE    = 'file'
+
+    SSH_WORKED   = 'ssh_worked'
+    SSH_FAILED   = 'ssh_failed'
+
+    RSYNC_WORKED = 'rsync_worked'
+    RSYNC_FAILED = 'rsync_failed'
 
     #
     #
@@ -38,7 +46,6 @@ class SyncManager():
         self.SQL = self.db_manager.get_sql_cmds(self._required_sql)
 
 
-
     #
     #
     #
@@ -59,7 +66,7 @@ class SyncManager():
         # Return a 'media_file' object that contains
         media_file = dict()
         
-        (base_path, package_id, rel_path, file_hash) \
+        (base_path, media_file['package_id'], rel_path, media_file['hash']) \
                 = cursor.execute(self.SQL['get_file'], (client_id, file_id)).fetchone()
 
         def get_parent_path(package_id):
@@ -67,11 +74,6 @@ class SyncManager():
             Recursively returns the packages folder_name
             for as many parent/child relationships the package_id has
             """
-            # Get the folder_name of the current package
-            # Get parent_id of current package_id
-            # If no parent_id: return folder_name
-            # If parent_id: return get_parent_path(parent_id) + '/' + folder_name
-
             folder_name = cursor.execute(self.SQL['get_package_folder'], str(package_id)).fetchone()
             parent_id   = cursor.execute(self.SQL['get_package_parent'], str(package_id)).fetchone()
 
@@ -80,9 +82,8 @@ class SyncManager():
             else:
                 return folder_name[0]
 
-        media_file['package_id'] = package_id
-        media_file['path'] = base_path + get_parent_path(package_id) + rel_path
-        media_file['hash'] = file_hash
+
+        media_file['path'] = base_path + get_parent_path(media_file['package_id']) + rel_path
 
         return media_file
 
@@ -93,22 +94,36 @@ class SyncManager():
     def ssh_command(self, dst_details, cmd):
         """
         Executes an SSH command to the remote host and returns the SSH output
+        Assumes SSH Keys are setup and password-less auth works
         """
         command = [ 'ssh' ]
 
-        if self.HOST_ADDRESS not in dst_details or self.HOST_PORT not in dst_details:
-            self.logger.error("Missing address and/or port in dst_details")
-            return False
+        if not hasattr(cmd, '__iter__'):
+            self.logger.error("Command given must be in a list (iterable), not a string")
+            return self.SSH_FAILED
+
+        if self.HOST_ADDRESS not in dst_details:
+            self.logger.error("Missing address in dst_details")
+            return self.SSH_FAILED
 
         if self.HOST_PORT in dst_details:
             command.append('-p {0}'.format(dst_details[self.HOST_PORT]))
 
-        command.append(dst_details[self.HOST_ADDRESS])
+        if self.HOST_USER in dst_details:
+            command.append(dst_details[self.HOST_USER] + '@' + dst_details[self.HOST_ADDRESS])
+        else:
+            command.append(dst_details[self.HOST_ADDRESS])
+
         command.extend(cmd)
 
-        sshProcess = subprocess.check_output(command)
+        self.logger.debug("SSH COMMAND: {0}".format(" ".join(command)))
+        sshProcess = subprocess.check_output(
+                command
+                , stderr=subprocess.PIPE
+                , universal_newlines=True
+            )
 
-        return True
+        return sshProcess
 
 
     #
@@ -122,33 +137,59 @@ class SyncManager():
 
         command = ['rsync', '-v', '--progress', '--verbose', '--compress']
 
-        if ('address' in src_details or 'port' in src_details) \
-                and ('address' in dst_details or 'port' in dst_details):
+        def is_remote_location(details):
+            if self.HOST_ADDRESS in details:
+                return True
+            elif self.HOST_PORT in details:
+                return True
+            else:
+                return False
+
+        if is_remote_location(src_details) and is_remote_location(dst_details):
             self.logger.error("Cannot have both as remote hosts")
-            return False
+            return None
+
+        if (self.HOST_ADDRESS in src_details and self.HOST_USER not in src_details) \
+                or (self.HOST_ADDRESS in dst_details and self.HOST_USER not in dst_details):
+            self.logger.warn("rsync user defaulting to the user it was run as")
 
         if self.HOST_PORT in src_details:
-            command.append("--rsh='ssh -p{0}'".format(src_details[port]))
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_details[self.HOST_PORT])))
         elif self.HOST_PORT in dst_details:
-            command.append("--rsh='ssh -p{0}'".format(dst_details[port]))
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_details[self.HOST_PORT])))
         else:
             self.logger.warn("Assuming port of 22 for rsync call")
 
-        if self.HOST_ADDRESS in src_details:
-            command.append("\"{0}:{1}\"".format(src_details[address], src_details[file]))
-        else:
-            command.append("\"{0}\"".format(src_details[file]))
+        # We now have the base part of the command done
+        # we process the source and then destination parts
+        
+        def build_rsync_location(details):
+            part = ''
+            remote = False
 
-        if self.HOST_ADDRESS in dst_details:
-            command.append("\"{0}:{1}\"".format(dst_details[address], dst_details[file]))
-        else:
-            command.append("\"{0}\"".format(dst_details[file]))
+            if self.HOST_USER in details:
+                remote = True
+                part += details[self.HOST_USER] + '@'
 
-        rsyncProcess = subprocess.check_output(command)
+            if self.HOST_ADDRESS in details:
+                remote = True
+                part += details[self.HOST_ADDRESS] + ':'
+
+            part += details[self.HOST_FILE]
+
+            return part
+
+
+        for i in [src_details, dst_details]:
+            command.append(build_rsync_location(i))
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
-        self.logger.debug(rsyncProcess)
-        return True
+        rsyncProcess = subprocess.check_output(
+                command
+                , stderr=subprocess.PIPE
+            )
+
+        return rsyncProcess
 
 
     #

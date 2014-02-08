@@ -178,8 +178,57 @@ class TestManager():
         from sync import SyncManager
         sm = SyncManager(db_manager, logger)
 
+        # Get a single file
         media_file = sm.get_file(1, 1)
         logger.info([(x, media_file[x]) for x in media_file])
+
+        # Test an SSH command
+        client_details = dict()
+        client_details['address'] = 'olympus.dalmura.com.au'
+        client_details['port'] = '9999'
+        client_details['user'] = 'michael'
+
+        sshoutput = sm.ssh_command(client_details, ['ls', '-l'])
+        logger.info(sshoutput)
+
+        # Test rsync command
+        import os
+        import subprocess
+        test_file = '/tmp/test.txt'
+        try:
+            with open(test_file, 'w') as f:
+                f.write('test\n')
+        except IOError:
+            logger.error('Unable to write test file')
+
+        dst_details = dict()
+        dst_details['address'] = 'olympus.dalmura.com.au'
+        dst_details['port'] = '9999'
+        dst_details['user'] = 'michael'
+        dst_details['file'] = test_file
+
+        src_details = dict()
+        src_details['file'] = test_file
+
+        rsyncOutput = sm.rsync_file(src_details, dst_details)
+        logger.info(rsyncOutput)
+
+        sshoutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
+        logger.info(sshoutput)
+
+        os.remove(test_file)
+        sshOutput = sm.ssh_command(dst_details, ['rm', test_file])
+        logger.info(sshOutput)
+        
+        file_exists = True
+        try:
+            sshoutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
+            logger.info(sshoutput)
+        except subprocess.CalledProcessError:
+            file_exists = False
+
+        if file_exists:
+            logger.error('File still exists, remote rm did not work')
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
