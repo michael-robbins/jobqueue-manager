@@ -29,8 +29,43 @@ class DBManager():
                                 'AND date_finished IS NULL ORDER BY date_queued ASC LIMIT 1'
         SQL['get_job']    = 'SELECT * FROM job_queue WHERE job_id = ?'
         SQL['delete_job'] = 'DELETE FROM job_queue WHERE job_id = ?'
-
         SQL['get_archived_job'] = 'SELECT * FROM job_history WHERE job_id = ?'
+        SQL['get_file']   = """
+            SELECT
+                cl.base_path, mpf.package_id, mf.relative_path, mf.hash
+            FROM
+                media_files AS mf
+            JOIN
+                media_package_files AS mpf ON mpf.file_id = mf.file_id
+            , (
+                SELECT
+                    base_path
+                FROM
+                    clients
+                WHERE
+                    client_id = ? 
+            ) AS cl
+            WHERE
+                mf.file_id = ?
+        """
+
+        SQL['get_package_parent']   = 'SELECT parent_id FROM media_package_links WHERE child_id = ?'
+        SQL['get_package_children'] = 'SELECT child_id FROM media_package_links WHERE parent_id = ?'
+        SQL['get_package_files']    = """
+            SELECT
+                file_id
+            FROM
+                files AS f
+            JOIN
+                media_package_files AS mpf ON f.file_id = mpf.file_id
+            WHERE
+                mpf.package_id = ?
+        """
+        SQL['get_package_folder'] = 'SELECT folder_name FROM media_packages WHERE package_id = ?'
+        SQL['get_client_packages'] = 'SELECT package_id FROM media_package_availability' + \
+                                        'WHERE client_id = ?'
+
+
 
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 

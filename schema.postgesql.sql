@@ -11,7 +11,7 @@ DROP TABLE media_package_files;
 DROP TABLE media_package_availability;
 DROP TABLE clients;
 DROP TABLE media_files;
-DROP TABLE media_tv_links;
+DROP TABLE media_package_links;
 DROP TABLE media_packages;
 DROP TABLE media_package_types;
 DROP TABLE client_types CASCADE;
@@ -74,10 +74,10 @@ CREATE TABLE media_files (
     , date_last_index TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Time the file was last indexed
 );
 
-CREATE TABLE media_tv_links (
-    -- Links a TV Base folder with its Season folders
-    base_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE RESTRICT
-    , season_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE CASCADE
+-- Links a media package to another media package (parent/child)
+CREATE TABLE media_package_links (
+    parent_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE RESTRICT
+    , child_id INTEGER NOT NULL REFERENCES media_packages(package_id) ON DELETE CASCADE
 );
 
 CREATE TABLE media_package_files (
@@ -140,14 +140,14 @@ INSERT INTO media_package_types VALUES (DEFAULT, 'TV Base');   -- 2
 INSERT INTO media_package_types VALUES (DEFAULT, 'TV Season'); -- 3
 
 -- Data tables, required for link tables
-INSERT INTO clients VALUES (DEFAULT, 1, 'Media Server', 'atlas', 22, '/data/media');        -- 1
-INSERT INTO clients VALUES (DEFAULT, 2, 'Media Player', 'prometheus'  , 22, '/data/media'); -- 2
+INSERT INTO clients VALUES (DEFAULT, 1, 'Media Server', 'atlas', 22, '/data/media/');        -- 1
+INSERT INTO clients VALUES (DEFAULT, 2, 'Media Player', 'prometheus'  , 22, '/data/media/'); -- 2
 
 INSERT INTO media_packages VALUES (
     DEFAULT
     , 1
     , 'Movie 1'
-    , 'Movie 1 (2009)'
+    , 'Movie 1 (2009)/'
     , ''
     , NOW()
     , NULL
@@ -158,7 +158,7 @@ INSERT INTO media_packages VALUES (
     DEFAULT
     , 1
     , 'Movie 2'
-    , 'Movie 2 (2012)'
+    , 'Movie 2 (2012)/'
     , ''
     , NOW()
     , NULL
@@ -169,7 +169,7 @@ INSERT INTO media_packages VALUES (
     DEFAULT
     , 2
     , 'TV Show 1 - Base'
-    , 'TV Show 1'
+    , 'TV Show 1/'
     , ''
     , NOW()
     , NULL
@@ -180,7 +180,7 @@ INSERT INTO media_packages VALUES (
     DEFAULT
     , 3
     , 'TV Show 1 - Season 1'
-    , 'Season 1'
+    , 'Season 1/'
     , ''
     , NOW()
     , NULL
@@ -191,7 +191,7 @@ INSERT INTO media_packages VALUES (
     DEFAULT
     , 3
     , 'TV Show 1 - Season 2'
-    , 'Season 2'
+    , 'Season 2/'
     , ''
     , NOW()
     , NULL
@@ -266,10 +266,11 @@ INSERT INTO media_package_availability VALUES (2, 1);
 INSERT INTO media_package_availability VALUES (2, 3);
 INSERT INTO media_package_availability VALUES (2, 5);
 
-INSERT INTO media_tv_links VALUES (3, 4);
-INSERT INTO media_tv_links VALUES (3, 5);
+INSERT INTO media_package_links VALUES (3, 4);
+INSERT INTO media_package_links VALUES (3, 5);
 
--- Create a test job, pushing Prometheus to the Client from the Server
+-- Create a test job, pushing a media package to the Client from the Server
 -- package(2) from client(1) to client(2) with action(1)
+-- Sync (action) TV Show - Base (Package) from Media Server (client) to Media Player (client)
 INSERT INTO job_queue VALUES (DEFAULT, 2, 1, 2, 1, NOW(), NULL, NULL, NULL);
 

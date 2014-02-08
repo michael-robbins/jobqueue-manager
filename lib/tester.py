@@ -6,9 +6,9 @@ class TestManager():
     My dodgy method of testing before I integrate Unit Tests :)
     """
 
-    config_file = '/home/michael/Development/Projects/jobqueue_manager/default.conf'
-    db_file     = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
-    db_schema   = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
+    config_file = '/home/michael/Development/code/jobqueue_manager/default.conf'
+    db_file     = '/home/michael/Development/code/jobqueue_manager/manager.db'
+    db_schema   = '/home/michael/Development/code/jobqueue_manager/schema.sqlite3.sql'
     log_file    = '/tmp/{0}.log'
 
     #
@@ -159,6 +159,32 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
 
+    #
+    #
+    #
+    def test_SyncManager(self):
+        # Setup
+        test_name = 'manager_SyncManager'
+        logger = self.get_test_logger(test_name)
+
+        from config import ConfigManager
+        config = ConfigManager(self.config_file).get_config()
+
+        from db import SQLite3_DBManager
+        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+
+        self.reset_db_schema(self.db_schema, logger)
+
+        from sync import SyncManager
+        sm = SyncManager(db_manager, logger)
+
+        media_file = sm.get_file(1, 1)
+        logger.info([(x, media_file[x]) for x in media_file])
+
+        # Print Results
+        self.dump_log(self.log_file.format(test_name))
+
+
 #
 #
 #
@@ -172,8 +198,8 @@ if __name__ == '__main__':
     # Run through the test cases we have so far
     # (no way of dynamically figuring out what we have coded so far)
     # (maybe something like getattr on self.test_* ?
-    tester.test_Logger()
-    tester.test_DBManager()
-    tester.test_JobManager()
-    tester.test_JobQueueManager()
-    #tester.test_SyncManager() # Not written yet
+    #tester.test_Logger()
+    #tester.test_DBManager()
+    #tester.test_JobManager()
+    #tester.test_JobQueueManager()
+    tester.test_SyncManager()

@@ -1,8 +1,15 @@
 import logging
-import os
 
 class Logger():
-    
+    """
+    Has the following levels (in increasing importance):
+    Logger.debug()
+    Logger.info()
+    Logger.warning()
+    Logger.error()
+    Logger.critical()
+    """
+
     def __init__(self, title, log_destination):
         """
         Setup the logger

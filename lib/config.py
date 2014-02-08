@@ -7,8 +7,8 @@ class ConfigManager():
     """
 
     required_config = {
-        'MANAGER'  : ['db_type', 'db_name', 'db_user', 'sleep']
-        , 'DAEMON' : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask']
+        'MANAGER'  : ['db_type', 'db_name', 'db_user']
+        , 'DAEMON' : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask', 'sleep']
         }
 
     additional_config = {
@@ -22,11 +22,13 @@ class ConfigManager():
         """
         What happens when config_file is missing something
         """
+        pass
 
     class ConfigFileMissing(Exception):
         """
         What happens when the config_file is missing
         """
+        pass
 
 
     #
@@ -59,12 +61,12 @@ class ConfigManager():
             if section not in self.config.sections():
                 message = "Config File is missing section: " + section
                 self.config = None
-                raise ConfigMissingPart(message)
+                raise self.ConfigMissingPart(message)
             else:
                 for option in self.required_config[section]:
                     if option not in self.config.options(section):
                         self.config = None
-                        raise ConfigMissingPart("Config file is missing option: " + option)
+                        raise self.ConfigMissingPart("Config file is missing option: " + option)
 
 
     #

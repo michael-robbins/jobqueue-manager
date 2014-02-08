@@ -134,7 +134,7 @@ class JobQueueManager():
             else:
                 self.logger.info('Job queue is empty.')
             
-            sleep_time = float(self.config['MANAGER']['sleep'])
+            sleep_time = float(self.config['DAEMON']['sleep'])
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 

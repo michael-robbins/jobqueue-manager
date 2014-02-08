@@ -16,7 +16,7 @@ class JobManager():
         #
         #
         #
-        def __init__(self, db_manager, config_tuple):
+        def __init__(self, db_manager, config_tuple, logger=None):
             """
             Setup the object by setattr'ing the fields into attributes
             Setup the DB side of things
@@ -49,7 +49,7 @@ class JobManager():
                 except IndexError:
                     setattr(self, key, '')
 
-            self.syncer = self.SyncManager()
+            self.syncer = self.SyncManager(db_manager, logger)
 
             self._required_sql = [
                     'get_job'
@@ -205,7 +205,7 @@ class JobManager():
 
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['all_jobs'])
-        return [ self.Job(self.db_manager, i) for i in cursor.fetchall() if i ]
+        return [ self.Job(self.db_manager, i, self.logger) for i in cursor.fetchall() if i ]
 
 
     #
@@ -219,7 +219,7 @@ class JobManager():
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['get_job'], job_id )
         row = cursor.fetchone()
-        return self.Job(self.db_manager, row) if row else None
+        return self.Job(self.db_manager, row, self.logger) if row else None
 
 
     #
@@ -233,7 +233,7 @@ class JobManager():
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['next_job'])
         row = cursor.fetchone()
-        return self.Job(self.db_manager, row) if row else None
+        return self.Job(self.db_manager, row, self.logger) if row else None
 
 
 #
