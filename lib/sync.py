@@ -41,6 +41,7 @@ class SyncManager():
                 , 'get_package_files'
                 , 'get_client_packages'
                 , 'get_package_folder'
+                , 'get_client_sync'
             ]
 
         self.SQL = self.db_manager.get_sql_cmds(self._required_sql)
@@ -66,16 +67,21 @@ class SyncManager():
         # Return a 'media_file' object that contains
         media_file = dict()
         
-        (base_path, media_file['package_id'], rel_path, media_file['hash']) \
-                = cursor.execute(self.SQL['get_file'], (client_id, file_id)).fetchone()
+        (       media_file[self.HOST_ADDRESS] \
+                , media_file[self.HOST_PORT]  \
+                , base_path                   \
+                , media_file['package_id']    \
+                , rel_path                    \
+                , media_file['hash']          \
+        ) = cursor.execute(self.SQL['get_file'], (client_id, file_id)).fetchone()
 
         def get_parent_path(package_id):
             """
             Recursively returns the packages folder_name
             for as many parent/child relationships the package_id has
             """
-            folder_name = cursor.execute(self.SQL['get_package_folder'], str(package_id)).fetchone()
-            parent_id   = cursor.execute(self.SQL['get_package_parent'], str(package_id)).fetchone()
+            folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
+            parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
 
             if parent_id:
                 return folder_name[0] + get_parent_path(parent_id[0])
@@ -83,7 +89,8 @@ class SyncManager():
                 return folder_name[0]
 
 
-        media_file['path'] = base_path + get_parent_path(media_file['package_id']) + rel_path
+        media_file[self.HOST_FILE] = base_path + get_parent_path(str(media_file['package_id']))  \
+                                                        + rel_path
 
         return media_file
 
@@ -222,17 +229,23 @@ class SyncManager():
     #
     def transfer_file(self, file_id, src_client_id, dst_client_id):
         """
-        Takes a file and performs an action on it (after verifying action needs to be taken)
-        1. Sync file_id between source and destination
-            Find out:
-                - Full source path:      create_client_file_path(file_id, src_client_id)
-                - Full destination path: create_client_file_path(file_id, dst_client_id)
-                - Address details of source (hostname & port)
-                - Address details of destination (hostname & port)
-        2. return verify_file(file_id, dst_client_id)
+        Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
         """
-        pass
 
+        src_file = get_file(src_client_id, file_id)
+        dst_file = get_file(dst_client_id, file_id)
+
+        if verify_file(dst_file):
+            return True
+
+        result = rsync_file(src_file, dst_file)
+
+        if verify_file(dst_file):
+            return True
+        else:
+            self.logger.error('Failed to transfer file {0} from {1} to {2}'.format(
+                                file_id, src_client_id, dst_client_id))
+            return False
 
     #
     #
@@ -245,13 +258,24 @@ class SyncManager():
             1.2. Shell out to ssh call to delete remote file
         2. return not verify_file(file_id, dst_client_id)
         """
-        pass
+
+        src_file = get_file(client_id, file_id)
+
+        attempts = 0
+        while verify_file(src_file):
+            if attempts > 5:
+                self.logger("Unable to delete file, please investigate")
+                return False
+            ssh_command(src_file, ['rm', src_file[self.HOST_FILE]])
+            attempts += 1
+
+        return True
 
 
     #
     #
     #
-    def verify_package(self, package_id, client_id):
+    def verify_package(self, package_id, client_id, cursor=None):
         """
         Takes a single package and ensures it exists on the client
         1. for file_id in get_package_files(package_id)
@@ -260,13 +284,23 @@ class SyncManager():
 
         Returns: bad_files set
         """
-        pass
+        bad_files = []
+
+        for file_id in cursor.execute(self.SQL['get_package_files'], package_id).fetchall()
+            file_id = file_id[0]
+
+            src_file = get_file(client_id, file_id)
+
+            if not verify_file(src_file):
+                bad_files.append(file_id)
+
+        return bad_files
 
 
     #
     #
     #
-    def verify_file(self, file_id, client_id):
+    def verify_file(self, file_id, client_id, cursor=None):
         """
         1. file = get_file(client_id, file_id)
         2. Perform remote file existence check
@@ -274,7 +308,8 @@ class SyncManager():
         4. Return False on missing or hash check fail
         """
 
-        cursor = self.db_manager.get_cursor()
+        if not cursor:
+            cursor = self.db_manager.get_cursor()
 
         package_file = get_file(client_id, file_id)
         return True

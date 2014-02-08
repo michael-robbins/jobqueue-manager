@@ -51,6 +51,7 @@ CREATE TABLE clients (
     , name VARCHAR(64) NOT NULL
     , sync_hostname VARCHAR(64) NOT NULL
     , sync_port INTEGER NOT NULL
+    , sync_user VARCHAR(32) NOT NULL
     , base_path VARCHAR(256) NOT NULL DEFAULT '/'
 );
 
@@ -140,8 +141,25 @@ INSERT INTO media_package_types VALUES (DEFAULT, 'TV Base');   -- 2
 INSERT INTO media_package_types VALUES (DEFAULT, 'TV Season'); -- 3
 
 -- Data tables, required for link tables
-INSERT INTO clients VALUES (DEFAULT, 1, 'Media Server', 'atlas', 22, '/data/media/');        -- 1
-INSERT INTO clients VALUES (DEFAULT, 2, 'Media Player', 'prometheus'  , 22, '/data/media/'); -- 2
+INSERT INTO clients VALUES (
+    DEFAULT
+    , 1
+    , 'Media Server'
+    , 'atlas'
+    , 22
+    , 'test'
+    , '/data/media/'
+); -- 1
+
+INSERT INTO clients VALUES (
+    DEFAULT
+    , 2
+    , 'Media Player'
+    , 'prometheus'
+    , 22
+    , 'test'
+    , '/data/media/'
+); -- 2
 
 INSERT INTO media_packages VALUES (
     DEFAULT
