@@ -188,10 +188,10 @@ class TestManager():
         client_details['port'] = '9999'
         client_details['user'] = 'michael'
 
-        sshoutput = sm.ssh_command(client_details, ['ls', '-l'])
+        sshoutput = sm.ssh_command(client_details, ['ls', '-l']).rstrip()
         logger.info(sshoutput)
 
-        # Test rsync command
+        # Generate our temporary file
         import os
         import subprocess
         test_file = '/tmp/test.txt'
@@ -201,11 +201,17 @@ class TestManager():
         except IOError:
             logger.error('Unable to write test file')
 
+        # Get it's hash
+        test_hash = subprocess.check_output(['sha256sum', test_file], universal_newlines=True)
+        test_hash = test_hash.split(' ')[0]
+
+        # Test the rsync command
         dst_details = dict()
         dst_details['address'] = 'olympus.dalmura.com.au'
         dst_details['port'] = '9999'
         dst_details['user'] = 'michael'
         dst_details['file'] = test_file
+        dst_details['hash'] = test_hash
 
         src_details = dict()
         src_details['file'] = test_file
@@ -213,23 +219,34 @@ class TestManager():
         rsyncOutput = sm.rsync_file(src_details, dst_details)
         logger.info(rsyncOutput)
 
-        sshoutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
-        logger.info(sshoutput)
+        try:
+            sshOutput = sm.ssh_command(dst_details, ['ls', '-l', test_file]).rstrip()
+            logger.info(sshOutput)
+        except subprocess.CalledProcessError:
+            logger.error('remote rsyncd file does not exist')
 
+        # Remotely verify the file
+        if sm.verify_file(dst_details):
+            logger.info('Remote file verification worked')
+        else:
+            logger.error('Remote file verification failed')
+
+        # Remove the temp remote file
         os.remove(test_file)
         sshOutput = sm.ssh_command(dst_details, ['rm', test_file])
         logger.info(sshOutput)
         
         file_exists = True
         try:
-            sshoutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
-            logger.info(sshoutput)
+            sshOutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
+            logger.info(sshOutput)
         except subprocess.CalledProcessError:
             file_exists = False
 
         if file_exists:
             logger.error('File still exists, remote rm did not work')
 
+        # Test 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 

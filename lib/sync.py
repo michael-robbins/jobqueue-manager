@@ -9,7 +9,7 @@ import subprocess
 #
 class SyncManager():
     """
-    Handles pushing media files around the various clients
+    Handles pushing package files around the various clients
     """
     
     HOST_USER    = 'user'
@@ -52,27 +52,29 @@ class SyncManager():
     #
     def get_file(self, client_id, file_id, cursor=None):
         """
-        Returns a media_file dict[]
-            'package_id' = ID of the media package the file belongs to
-            'path' = Fully qualified media file path specific to the client
-            'hash' = The hash of the file (should not be different across clients)
+        Returns a package_file dict[]
+            'package_id' = ID of the package the file belongs to
+            'path' = Fully qualified package file path specific to the client
+            'hash' = The hash of the file (shouldn't be different across clients)
+            'port' = Port of the client
+            'address' = Address (host or IP) of the client 
             
         As the path could be nested we need to loop through the nesting 
-            to discover the fully qualified path
+            to discover the fully qualified path of the file at the client specific location
         """
 
         if not cursor:
             cursor = self.db_manager.get_cursor()
 
-        # Return a 'media_file' object that contains
-        media_file = dict()
+        package_file = dict()
         
-        (       media_file[self.HOST_ADDRESS] \
-                , media_file[self.HOST_PORT]  \
-                , base_path                   \
-                , media_file['package_id']    \
-                , rel_path                    \
-                , media_file['hash']          \
+        (
+                package_file[self.HOST_ADDRESS]
+                , package_file[self.HOST_PORT]
+                , base_path
+                , package_file['package_id']
+                , rel_path
+                , package_file['hash']
         ) = cursor.execute(self.SQL['get_file'], (client_id, file_id)).fetchone()
 
         def get_parent_path(package_id):
@@ -89,16 +91,16 @@ class SyncManager():
                 return folder_name[0]
 
 
-        media_file[self.HOST_FILE] = base_path + get_parent_path(str(media_file['package_id']))  \
+        package_file[self.HOST_FILE] = base_path + get_parent_path(str(package_file['package_id']))  \
                                                         + rel_path
 
-        return media_file
+        return package_file
 
 
     #
     #
     #
-    def ssh_command(self, dst_details, cmd):
+    def ssh_command(self, package_file, cmd):
         """
         Executes an SSH command to the remote host and returns the SSH output
         Assumes SSH Keys are setup and password-less auth works
@@ -109,17 +111,17 @@ class SyncManager():
             self.logger.error("Command given must be in a list (iterable), not a string")
             return self.SSH_FAILED
 
-        if self.HOST_ADDRESS not in dst_details:
-            self.logger.error("Missing address in dst_details")
+        if self.HOST_ADDRESS not in package_file:
+            self.logger.error("Missing address in package_file")
             return self.SSH_FAILED
 
-        if self.HOST_PORT in dst_details:
-            command.append('-p {0}'.format(dst_details[self.HOST_PORT]))
+        if self.HOST_PORT in package_file:
+            command.append('-p {0}'.format(package_file[self.HOST_PORT]))
 
-        if self.HOST_USER in dst_details:
-            command.append(dst_details[self.HOST_USER] + '@' + dst_details[self.HOST_ADDRESS])
+        if self.HOST_USER in package_file:
+            command.append(package_file[self.HOST_USER] + '@' + package_file[self.HOST_ADDRESS])
         else:
-            command.append(dst_details[self.HOST_ADDRESS])
+            command.append(package_file[self.HOST_ADDRESS])
 
         command.extend(cmd)
 
@@ -136,7 +138,7 @@ class SyncManager():
     #
     #
     #
-    def rsync_file(self, src_details, dst_details):
+    def rsync_file(self, src_package_file, dst_package_file):
         """
         Supports sending a file from a [local|remote] host
         to its opposite [remote|local] destination
@@ -144,56 +146,66 @@ class SyncManager():
 
         command = ['rsync', '-v', '--progress', '--verbose', '--compress']
 
-        def is_remote_location(details):
-            if self.HOST_ADDRESS in details:
+        def is_remote(package_file):
+            """
+            Checks to see if the file host is remote (has address or port)
+            """
+            if self.HOST_ADDRESS in package_file:
                 return True
-            elif self.HOST_PORT in details:
+            elif self.HOST_PORT in package_file:
                 return True
             else:
                 return False
 
-        if is_remote_location(src_details) and is_remote_location(dst_details):
+        if is_remote(src_package_file) and is_remote(dst_package_file):
             self.logger.error("Cannot have both as remote hosts")
             return None
 
-        if (self.HOST_ADDRESS in src_details and self.HOST_USER not in src_details) \
-                or (self.HOST_ADDRESS in dst_details and self.HOST_USER not in dst_details):
+        def is_remote_with_user(package_file):
+            """
+            Extends is_remote with if we have a user or not as well
+            """
+            if is_remote(package_file) and self.HOST_USER in package_file:
+                return True
+            else:
+                return False
+
+        if is_remote_with_user(src_package_file) or is_remote_with_user(dst_package_file):
             self.logger.warn("rsync user defaulting to the user it was run as")
 
-        if self.HOST_PORT in src_details:
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_details[self.HOST_PORT])))
-        elif self.HOST_PORT in dst_details:
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_details[self.HOST_PORT])))
+
+        if self.HOST_PORT in src_package_file:
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_package_file[self.HOST_PORT])))
+        elif self.HOST_PORT in dst_package_file:
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_package_file[self.HOST_PORT])))
         else:
             self.logger.warn("Assuming port of 22 for rsync call")
 
         # We now have the base part of the command done
         # we process the source and then destination parts
         
-        def build_rsync_location(details):
-            part = ''
-            remote = False
+        def build_rsync_location(package_file):
+            location = ''
 
-            if self.HOST_USER in details:
-                remote = True
-                part += details[self.HOST_USER] + '@'
+            if self.HOST_USER in package_file:
+                location += package_file[self.HOST_USER] + '@'
 
-            if self.HOST_ADDRESS in details:
-                remote = True
-                part += details[self.HOST_ADDRESS] + ':'
+            if self.HOST_ADDRESS in package_file:
+                location += package_file[self.HOST_ADDRESS] + ':'
 
-            part += details[self.HOST_FILE]
+            location += package_file[self.HOST_FILE]
 
-            return part
+            return location
 
 
-        for i in [src_details, dst_details]:
-            command.append(build_rsync_location(i))
+        for package_file in [src_package_file, dst_package_file]:
+            command.append(build_rsync_location(package_file))
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
         rsyncProcess = subprocess.check_output(
                 command
                 , stderr=subprocess.PIPE
+                , universal_newlines=True
             )
 
         return rsyncProcess
@@ -232,42 +244,73 @@ class SyncManager():
         Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
         """
 
-        src_file = get_file(src_client_id, file_id)
-        dst_file = get_file(dst_client_id, file_id)
+        src_package_file = get_file(src_client_id, file_id)
+        dst_package_file = get_file(dst_client_id, file_id)
 
-        if verify_file(dst_file):
+        if verify_file(dst_package_file):
             return True
 
-        result = rsync_file(src_file, dst_file)
+        result = rsync_file(src_package_file, dst_package_file)
 
-        if verify_file(dst_file):
+        if verify_file(dst_package_file):
             return True
         else:
             self.logger.error('Failed to transfer file {0} from {1} to {2}'.format(
                                 file_id, src_client_id, dst_client_id))
             return False
 
+
     #
     #
     #
-    def delete_file(self, file_id, client_id):
+    def delete_package(self, package_id, client_id, cursor=None):
         """
-        Deletes a file off the client
-        1. if verify_file(file_id, client_id)
-            1.1. '/'.join([DST_CLIENT_PATH]
-            1.2. Shell out to ssh call to delete remote file
-        2. return not verify_file(file_id, dst_client_id)
+        Takes a single package and deletes it off the client
+        1. for file_id in get_package_files(package_id)
+            1.1. delete_file(file_id, client_id)
+        2. If verify_file returned False add to bad_files set
+
+        Returns: bad_files set
         """
 
-        src_file = get_file(client_id, file_id)
+        if not cursor:
+            cursor = self.db_manager.get_cursor()
 
-        attempts = 0
-        while verify_file(src_file):
-            if attempts > 5:
-                self.logger("Unable to delete file, please investigate")
-                return False
-            ssh_command(src_file, ['rm', src_file[self.HOST_FILE]])
-            attempts += 1
+        bad_files = []
+
+        for file_id in cursor.execute(self.SQL['get_package_files'], package_id).fetchall():
+            file_id = file_id[0]
+
+            client_package_file = get_file(client_id, file_id)
+
+            if not client_package_file:
+                self.logger.error('Cannot generate package_file for file {0} for client {1}'.format(
+                                        file_id, client_id))
+
+            if not delete_file(client_package_file, cursor):
+                bad_files.append(file_id)
+
+        return bad_files
+
+    #
+    #
+    #
+    def delete_file(self, client_package_file):
+        """
+        Deletes a file off the target client
+        """
+
+        if not verify_file(client_package_file):
+            self.logger.error('Package file is missing or corrupt')
+
+        try:
+            self.ssh_command(client_package_file, ['rm', client_package_file[self.HOST_FILE]])
+        except subprocess.CalledProcessError:
+            self.logger.error('Something went wrong during the remote rm process')
+
+        if verify_file(client_package_file):
+            self.logger.error('Package file failed to delete')
+            return False
 
         return True
 
@@ -284,14 +327,22 @@ class SyncManager():
 
         Returns: bad_files set
         """
+
+        if not cursor:
+            cursor = self.db_manager.get_cursor()
+
         bad_files = []
 
-        for file_id in cursor.execute(self.SQL['get_package_files'], package_id).fetchall()
+        for file_id in cursor.execute(self.SQL['get_package_files'], package_id).fetchall():
             file_id = file_id[0]
 
-            src_file = get_file(client_id, file_id)
+            client_package_file = get_file(client_id, file_id)
 
-            if not verify_file(src_file):
+            if not client_package_file:
+                self.logger.error('Cannot generate package file for file {0} for client {1}'.format(
+                                        file_id, client_id))
+
+            if not verify_file(client_package_file):
                 bad_files.append(file_id)
 
         return bad_files
@@ -300,19 +351,44 @@ class SyncManager():
     #
     #
     #
-    def verify_file(self, file_id, client_id, cursor=None):
+    def verify_file(self, client_package_file):
         """
-        1. file = get_file(client_id, file_id)
+        1. package_file = get_file(client_id, file_id)
         2. Perform remote file existence check
         3. Perform remote hash of file
         4. Return False on missing or hash check fail
         """
 
-        if not cursor:
-            cursor = self.db_manager.get_cursor()
+        try:
+            self.ssh_command(client_package_file, ['ls', client_package_file[self.HOST_FILE]])
+        except subprocess.CalledProcessError:
+            self.logger.error('Missing file {0} on client {1}'.format(
+                            client_package_file[self.HOST_FILE]
+                            , client_package_file[self.HOST_ADDRESS]
+                        ))
+            return False
 
-        package_file = get_file(client_id, file_id)
-        return True
+        try:
+            sshOutput = self.ssh_command(
+                            client_package_file
+                            , ['sha256sum', client_package_file[self.HOST_FILE]]
+                        )
+        except subprocess.CalledProcessError:
+            self.logger.error('Unable to perform remote hash for file {0} on client {1}'.format(
+                            client_package_file[self.HOST_FILE]
+                            , client_package_file[self.HOST_ADDRESS]
+                        ))
+
+        remote_hash = sshOutput.rstrip().split(' ')[0]
+
+        if client_package_file['hash'] == remote_hash:
+            self.logger.debug('Remote file hash matches')
+            return True
+        else:
+            self.logger.error('File hash mismatch for file {0} on client {1}'.format(
+                            client_package_file[self.HOST_FILE]
+                            , client_package_file[self.HOST_ADDRESS]))
+            return False
 
 
 if __name__ == '__main__':
