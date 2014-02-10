@@ -221,21 +221,6 @@ class SyncManager():
     def handle_package(self, package_id, src_client_id, dst_client_id, action_id, cursor=None):
         """
         Transfers a package between clients (or deletes/etc depending on action_id)
-        1. bad_src_files = verify_package(package_id, src_client_id)
-            1.1. Return False if bad_src_files
-        2. bad_dst_files = verify_package(package_id, dst_client_id)
-        3. for file_id in ( bad_dst_files || get_file_packages(package_id) )
-            3.1. if action == 'SYNC':
-                3.1.1. result = transfer_file(file_id, src_client_id, dst_client_id, action_id)
-            3.2. if action == 'DEL':
-                3.2.1. result = delete_file(file_id, dst_client_id)
-                3.2.2. if not result: bad_files.append(file_id)
-            3.3. else (Unknown action, bail out here?)
-        4. If bad_files: return bad_files
-        5. if action == 'SYNC':
-            5.1. return verify_package(package_id, dst_client_id)
-        6. if action == 'DEL':
-            6.1. return not verify_package(package_id, dst_client_id)
         """
 
         if not cursor:
@@ -398,11 +383,6 @@ class SyncManager():
     def verify_package(self, package_id, client_id, cursor=None):
         """
         Takes a single package and ensures it exists on the client
-        1. for file_id in get_file_packages(package_id)
-            1.1. verify_file(file_id, client_id)
-        2. If verify_file returned False add to bad_files set
-
-        Returns: bad_files set
         """
 
         if not cursor:
