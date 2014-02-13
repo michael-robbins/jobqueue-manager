@@ -1,0 +1,8 @@
+# JQM defaults file
+
+JQM_USER="media"
+JQM_HOME="/home/media/.jobqueuemanager"
+JQM_DATA="/home/media/.jobqueuemanager"
+APP_PATH="/home/media/.jobqueuemanager"
+DATA_DIR="/home/media/.jobqueuemanager"
+PID_FILE="/run/jobqueuemanager/jqm.pid"
