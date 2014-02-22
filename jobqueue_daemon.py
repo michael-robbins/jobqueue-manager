@@ -35,7 +35,7 @@ def main():
             , options.daemon
     )
 
-    return manager.run()
+    return manager.start()
 
 if __name__ == '__main__':
     main()
