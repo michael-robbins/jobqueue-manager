@@ -156,6 +156,9 @@ class JobQueueManager():
             with open(self.pidfile,'r') as pf:
                 pid = int(pf.read().strip())
         except IOError:
+            if not os.path.isdir(os.path.dirname(self.pidfile)):
+                self.logger.error('PID folder does not exist: {0}'.format(os.path.dirname(self.pidfile)))
+                sys.exit(1)
             pid = None
 
         # pidfile exists, bail
