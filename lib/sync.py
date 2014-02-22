@@ -404,7 +404,7 @@ class SyncManager():
             return self.VERIFICATION_NONE
         elif bad_files and len(bad_files) < count:
             return self.VERIFICATION_PARTIAL
-        else bad_files:
+        else:
             return self.VERIFICATION_FULL
 
 
