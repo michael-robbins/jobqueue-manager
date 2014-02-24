@@ -43,39 +43,87 @@ class FilePackageManager():
             * rel_path
             * hash
             """
-            pass
+            
+            def __init__(self, file_id, cursor):
+                """
+                Takes the file_id and configures the required attributes
+                """
+                pass
 
 
         class FilePackage(object):
             """
-            Package that contains multiplie file objects
-            Not sure if I will need this (just make a package a list of file objects?)
+            Package that contains multiplie file objects (in a basic list)
+            Contains the following attributes:
+            * name
+            * folder_name
+            * metadata_json
+            * media_package_type
+            * file_list = list() of files
+
+            Contains the following client specific attributes:
+            * hostname
+            * port
+            * base_path
             """
-            pass
+
+            def __init__(self, package_id, cursor):
+                """
+                Takes the package_id and configures the correct attributes
+                1. SELECT * FROM media_packages WHERE package_id = package_id
+                2. SELECT file_id FROM media_package_files WHERE package_id = package_id
+                3. file_list = list()
+                4. FOR file_id in cursor.fetchall():
+                    - file_list.append(self.File(file_id, cursor))
+
+                * Add in the media_package_type as well to make it fit into the source path.
+                """
+                pass
 
 
-        def getFile(self, file_id, client_id=None):
+            def configure_for_client(self, client_id, cursor):
+                """
+                Takes the client_id and configures the client specific attributes
+                1. SELECT sync_*, base_path FROM clients WHERE client_id = client_id
+                """
+                pass
+
+
+        def getFile(self, file_id):
             """
             Returns a file object of the given file_id
             Supports client specific options if client_id is provided
             """
 
-            request = self.File(file_id)
+            cursor = self.db_manager.get_cursor()
 
-            if client_id:
-                self.configre_for_client(
-            return self.File()
+            request_file = self.File(file_id, cursor)
+
+            if not request_file:
+                self.logger.error('Unable to generate file object for id {0}'.format(file_id))
+                return None
+
+            return request_file
 
 
-        def getFilePackage(self, file_id, client_id=None):
+        def getFilePackage(self, package_id, client_id=None):
             """
             Returns a file package object (with optional ForClient specialization)
+            Supports client specific options if client_id is provided
+            Note: Client specific options are applied at a file package level
             """
-            pass
+
+            cursor = self.db_manager.get_cursor()
+
+            request_package = self.FilePackage(package_id, cursor)
+
+            if not request_package:
+                self.logger.error('Unable to generate file package for id {0}'.format(package_id))
+                return None
+
+            if client_id:
+                request_package.configure_for_client(client_id, cursor)
+
+            return request_file
 
 
-        def configure_for_client(self, client_id, cursor=None):
-            """
-            Configures file object for a specific client
-            """
-            pass
