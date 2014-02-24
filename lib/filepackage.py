@@ -2,14 +2,38 @@ import os
 import sys
 
 
-#
-#
-#
 class FilePackageManager():
         """
         Handles the actual file and file package objects
         Can add files and file packages into the DB
         """
+
+        HOST_USER    = 'user'
+        HOST_ADDRESS = 'address'
+        HOST_PORT    = 'port'
+        HOST_FILE    = 'file'
+
+
+        def __init__(self, db_mananger, logger):
+            """
+            Setup the DB interactions and the logger
+            """
+
+            self.logger     = logger
+            self.db_manager = db_manager
+
+            self._required_sql = [
+                    'get_file'
+                    , 'get_package_parent'
+                    , 'get_package_children'
+                    , 'get_file_packages'
+                    , 'get_client_packages'
+                    , 'get_package_folder'
+                    , 'get_client_sync'
+                ]
+
+            self.SQL = self.db_manager.get_sql_cmds(self._required_sql)
+
 
         class File(object):
             """
@@ -21,12 +45,6 @@ class FilePackageManager():
             """
             pass
 
-            def configure_for_client(client_id):
-                """
-                Configures file object for a specific client
-                """
-                pass
-
 
         class FilePackage(object):
             """
@@ -35,20 +53,29 @@ class FilePackageManager():
             """
             pass
 
-            def configure_for_client(client_id):
-                """
-                Configures a file package for a specific client
-                """
-                pass
 
-        def getFile(file_id, client_id=None):
+        def getFile(self, file_id, client_id=None):
             """
             Returns a file object of the given file_id
             Supports client specific options if client_id is provided
             """
-            pass
 
-        def getFilePackage(file_id, client_id=None):
+            request = self.File(file_id)
+
+            if client_id:
+                self.configre_for_client(
+            return self.File()
+
+
+        def getFilePackage(self, file_id, client_id=None):
             """
             Returns a file package object (with optional ForClient specialization)
             """
+            pass
+
+
+        def configure_for_client(self, client_id, cursor=None):
+            """
+            Configures file object for a specific client
+            """
+            pass
