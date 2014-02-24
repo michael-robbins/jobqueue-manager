@@ -32,34 +32,22 @@ class DBManager():
         SQL['get_archived_job'] = 'SELECT * FROM job_history WHERE job_id = ?'
         SQL['get_file']   = """
             SELECT
-                cl.sync_hostname
-                , cl.sync_port
-                , cl.base_path
-                , mpf.package_id
+                mpf.package_id
                 , mf.relative_path
                 , mf.hash
             FROM
                 media_files AS mf
             JOIN
                 media_package_files AS mpf ON mpf.file_id = mf.file_id
-            , (
-                SELECT
-                    sync_hostname
-                    , sync_port
-                    , base_path
-                FROM
-                    clients
-                WHERE
-                    client_id = ? 
-            ) AS cl
             WHERE
                 mf.file_id = ?
         """
+        SQL['get_package'] = 'SELECT * FROM media_packages WHERE package_id = ?'
+        SQL['get_client']  = 'SELECT * FROM clients WHERE client_id = ?'
 
         SQL['get_package_parent']   = 'SELECT parent_id FROM media_package_links WHERE child_id = ?'
         SQL['get_package_children'] = 'SELECT child_id FROM media_package_links WHERE parent_id = ?'
         SQL['get_package_files']    = 'SELECT file_id FROM media_package_files WHERE package_id = ?'
-        SQL['get_package_folder']   = 'SELECT folder_name FROM media_packages WHERE package_id = ?'
         SQL['get_client_packages']  = 'SELECT package_id FROM media_package_availability WHERE client_id = ?'
 
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
