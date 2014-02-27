@@ -1,21 +1,12 @@
-#
-#
-#
 class JobManager():
     """
     Used to manage jobs and extract info from the JobManager database
     """
 
-    #
-    #
-    #
     class Job():
 
         from sync import SyncManager
 
-        #
-        #
-        #
         def __init__(self, db_manager, config_tuple, logger=None):
             """
             Setup the object by setattr'ing the fields into attributes
@@ -64,9 +55,6 @@ class JobManager():
             self.SQL = db_manager.get_sql_cmds(self._required_sql) # Get implementation specific SQL
 
 
-        #
-        #
-        #
         def __str__(self):
             """
             Return object as a good looking string ;)
@@ -77,9 +65,6 @@ class JobManager():
                 )
 
 
-        #
-        #
-        #
         def reload_job(self, archived=False):
             """
             Reloads the job (get latest datetime fields)
@@ -94,9 +79,6 @@ class JobManager():
             self.__init__(self.db_manager, row)
 
 
-        #
-        #
-        #
         def execute(self):
             """
             Execute Job (this function should be forked correctly from manager):
@@ -119,9 +101,6 @@ class JobManager():
                 self.report_failed()
 
 
-        #
-        #
-        #
         def report_started(self):
             """
             Reports back that we have started the job
@@ -133,39 +112,30 @@ class JobManager():
             self.reload_job()
 
 
-        #
-        #
-        #
         def report_complete(self):
             """
             Reports back that we have finished the job
             """
 
             cursor = self.db_manager.get_cursor()
-            cursor.execute( self.SQL['finish_job'], (self.job_id) )
+            cursor.execute( self.SQL['finish_job'], self.job_id )
             cursor.execute( self.SQL['archive_job'], ('Complete', self.job_id) )
-            cursor.execute( self.SQL['delete_job'], (self.job_id) )
+            cursor.execute( self.SQL['delete_job'], self.job_id )
             self.reload_job(archived=True)
 
 
-        #
-        #
-        #
         def report_failed(self):
             """
             Reports back that we have failed the job
             """
 
             cursor = self.db_manager.get_cursor()
-            cursor.execute( self.SQL['finish_job'], (self.job_id) )
+            cursor.execute( self.SQL['finish_job'], self.job_id )
             cursor.execute( self.SQL['archive_job'], ('Failed', self.job_id) )
-            cursor.execute( self.SQL['delete_job'], (self.job_id) )
+            cursor.execute( self.SQL['delete_job'], self.job_id )
             self.reload_job(archived=True)
 
 
-    #
-    #
-    #
     def __init__(self, db_manager, logger):
         """
         Sets up the DB and the logger
@@ -183,9 +153,6 @@ class JobManager():
                 self.logger.error('You are missing the following SQL command: {0}'.format(opt))
 
 
-    #
-    #
-    #
     def is_alive(self):
         """
         Tells the daemon to keep going or not
@@ -195,9 +162,6 @@ class JobManager():
         return True
 
 
-    #
-    #
-    #
     def get_jobs(self):
         """
         Returns a list of all available Jobs
@@ -208,9 +172,6 @@ class JobManager():
         return [ self.Job(self.db_manager, i, self.logger) for i in cursor.fetchall() if i ]
 
 
-    #
-    #
-    #
     def get_job(self, job_id):
         """
         Returns a Job of the given job_id
@@ -222,9 +183,6 @@ class JobManager():
         return self.Job(self.db_manager, row, self.logger) if row else None
 
 
-    #
-    #
-    #
     def get_next_job(self):
         """
         Returns the next Job in the queue
@@ -236,9 +194,6 @@ class JobManager():
         return self.Job(self.db_manager, row, self.logger) if row else None
 
 
-#
-#
-#
 if __name__ == '__main__':
     """
     Testing if run interactively

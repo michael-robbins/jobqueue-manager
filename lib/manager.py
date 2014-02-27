@@ -17,9 +17,6 @@ class JobQueueManager():
     Handles the monitoring of the JobQueue and runs jobs
     """
 
-    #
-    #
-    #
     def __init__(self, config_file, verbose, daemon_mode=True):
         """
         Parse config file and setup the logging
@@ -35,9 +32,6 @@ class JobQueueManager():
         self.pidfile = self.config['DAEMON']['pid_file']
 
 
-    #
-    #
-    #
     def daemonize(self):
         """
         Turn this running process into a deamon
@@ -88,9 +82,7 @@ class JobQueueManager():
             f.write(pid + '\n')
         self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid,self.pidfile))
 
-    #
-    #
-    #
+
     def on_exit(self):
         """
         Delete the PID file
@@ -99,9 +91,7 @@ class JobQueueManager():
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
-    #
-    #
-    #
+
     def run(self):
         """
         Main worker loop
@@ -140,9 +130,8 @@ class JobQueueManager():
         else:
             self.logger.error('We exited the while loop but are supposedly still alive')
             return False
-    #
-    #
-    #
+
+
     def start(self):
         """
         Start the daemon
@@ -180,9 +169,6 @@ class JobQueueManager():
         self.logger.info('Finished successfully, bye bye!')
 
 
-    #
-    #
-    #
     def stop(self):
         """
         Stop the daemon
@@ -192,9 +178,6 @@ class JobQueueManager():
         # Inject kill command into DB queue?
 
 
-#
-#
-#
 if __name__ == '__main__':
     from tester import TestManager
     tester = TestManager()

@@ -85,9 +85,6 @@ class DBManager():
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
 
-#
-#
-#
 class Postgres_DBManager(DBManager):
     """
     Postgres overload
@@ -164,9 +161,6 @@ class Postgres_DBManager(DBManager):
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
 
-#
-#
-#
 class SQLite3_DBManager(DBManager):
     """
     SQLite3 overload
@@ -235,9 +229,6 @@ class SQLite3_DBManager(DBManager):
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
 
-#
-#
-#
 if __name__ == '__main__':
     from tester import TestManager
     tester = TestManager()
