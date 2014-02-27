@@ -2,11 +2,10 @@ import os
 import sys
 import shlex
 import subprocess
+from filepackage import FilePackageManager
+from client      import ClientManager
 
 
-#
-#
-#
 class SyncManager():
     """
     Handles pushing package files around the various clients
@@ -27,83 +26,18 @@ class SyncManager():
     VERIFICATION_PARTIAL = 'kinda_there'
     VERIFICATION_NONE    = 'not_there'
 
-    #
-    #
-    #
+
     def __init__(self, db_manager, logger):
         """
         Setup the DB interactions and logger
         """
-
         self.logger     = logger
         self.db_manager = db_manager
 
-        self._required_sql = [
-                'get_file'
-                , 'get_package_parent'
-                , 'get_package_children'
-                , 'get_file_packages'
-                , 'get_client_packages'
-                , 'get_package_folder'
-                , 'get_client_sync'
-            ]
-
-        self.SQL = self.db_manager.get_sql_cmds(self._required_sql)
+        self.filepackage_manager = FilePackageManager(db_manager, logger)
+        self.client_manager      = ClientManager(db_manager, logger)
 
 
-    #
-    #
-    #
-    def get_file(self, client_id, file_id, cursor=None):
-        """
-        Returns a file_package dict[]
-            'package_id' = ID of the package the file belongs to
-            'path' = Fully qualified package file path specific to the client
-            'hash' = The hash of the file (shouldn't be different across clients)
-            'port' = Port of the client
-            'address' = Address (host or IP) of the client 
-            
-        As the path could be nested we need to loop through the nesting 
-            to discover the fully qualified path of the file at the client specific location
-        """
-
-        if not cursor:
-            cursor = self.db_manager.get_cursor()
-
-        file_package = dict()
-        
-        (
-                file_package[self.HOST_ADDRESS]
-                , file_package[self.HOST_PORT]
-                , base_path
-                , file_package['package_id']
-                , rel_path
-                , file_package['hash']
-        ) = cursor.execute(self.SQL['get_file'], (client_id, file_id)).fetchone()
-
-        def get_parent_path(package_id):
-            """
-            Recursively returns the packages folder_name
-            for as many parent/child relationships the package_id has
-            """
-            folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
-            parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
-
-            if parent_id:
-                return folder_name[0] + get_parent_path(parent_id[0])
-            else:
-                return folder_name[0]
-
-
-        file_package[self.HOST_FILE] = base_path + get_parent_path(str(file_package['package_id']))  \
-                                                        + rel_path
-
-        return file_package
-
-
-    #
-    #
-    #
     def ssh_command(self, file_package, cmd):
         """
         Executes an SSH command to the remote host and returns the SSH output
@@ -139,9 +73,6 @@ class SyncManager():
         return sshProcess
 
 
-    #
-    #
-    #
     def rsync_file(self, src_file_package, dst_file_package):
         """
         Supports sending a file from a [local|remote] host
@@ -215,9 +146,6 @@ class SyncManager():
         return rsyncProcess
 
 
-    #
-    #
-    #
     def handle_package(self, package_id, src_client_id, dst_client_id, action_id, cursor=None):
         """
         Transfers a package between clients (or deletes/etc depending on action_id)
@@ -271,9 +199,6 @@ class SyncManager():
             pass # Not implemented yet
 
 
-    #
-    #
-    #
     def transfer_package(self, package_id, src_client_id, dst_client_id, cursor=None):
         """
         Wrapper around transfer_file
@@ -283,6 +208,11 @@ class SyncManager():
             cursor = self.db_manager.get_cursor()
 
         bad_transfers = []
+
+        file_package = self.filepackage_manager.getFilePackage(package_id, src_client_id)
+        src_client   = self.client_manager.getClient(src_client_id)
+        dst_client   = self.client_manager.getClient(src_client_id)
+        dst_file_package = self.filepackage_manager.getFilePackage(package_id, dst_client_id)
 
         for file_id in cursor.execute(self.sql['get_file_packages'], package_id).fetchall():
             file_id = file_id[0]
@@ -302,9 +232,6 @@ class SyncManager():
             return False
 
 
-    #
-    #
-    #
     def transfer_file(self, src_file_package, dst_file_packge):
         """
         Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
@@ -324,9 +251,6 @@ class SyncManager():
             return False
 
 
-    #
-    #
-    #
     def delete_package(self, package_id, client_id, cursor=None):
         """
         Takes a single package and deletes it off the client
@@ -353,9 +277,6 @@ class SyncManager():
             return True
 
 
-    #
-    #
-    #
     def delete_file(self, file_package):
         """
         Deletes a file off the target client
@@ -377,9 +298,6 @@ class SyncManager():
         return True
 
 
-    #
-    #
-    #
     def verify_package(self, package_id, client_id, cursor=None):
         """
         Takes a single package and ensures it exists on the client
@@ -408,9 +326,6 @@ class SyncManager():
             return self.VERIFICATION_FULL
 
 
-    #
-    #
-    #
     def verify_file(self, file_package):
         """
         1. file_package = get_file(client_id, file_id)

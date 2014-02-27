@@ -8,47 +8,28 @@ class FilePackageManager():
         Can add files and file packages into the DB
         """
 
-        HOST_USER    = 'user'
-        HOST_ADDRESS = 'address'
-        HOST_PORT    = 'port'
-        HOST_FILE    = 'file'
-
-
-        def __init__(self, db_mananger, logger):
+        def __init__(self, db_manager, logger):
             """
             Setup the DB interactions and the logger
+            We just use the db_manager to get the correct SQL
+            The rest will be provided to the child classes as cursors from the calling class
             """
 
             self.logger     = logger
-            self.db_manager = db_manager
 
             self._required_sql = [
-                    'get_file'
+                    'get_file_for_sync'
+                    , 'get_package_for_sync'
                     , 'get_package_parent'
                     , 'get_package_children'
                     , 'get_file_packages'
-                    , 'get_client_packages'
                     , 'get_package_folder'
-                    , 'get_client_sync'
+                    , 'get_package_files'
                 ]
 
-            self.SQL = self.db_manager.get_sql_cmds(self._required_sql)
+            self.SQL = db_manager.get_sql_cmds(self._required_sql)
 
 
-        class File(object):
-            """
-            A file object, contains the following attributes
-            * file_id
-            * package_id
-            * rel_path
-            * hash
-            """
-            
-            def __init__(self, file_id, cursor):
-                """
-                Takes the file_id and configures the required attributes
-                """
-                pass
 
 
         class FilePackage(object):
@@ -57,73 +38,108 @@ class FilePackageManager():
             Contains the following attributes:
             * name
             * folder_name
-            * metadata_json
-            * media_package_type
+            * package_type_name
             * file_list = list() of files
 
-            Contains the following client specific attributes:
-            * hostname
-            * port
-            * base_path
+            This class encapsulates the File object
+            (as you shouldn't be dealing with File objects directly)
             """
 
-            def __init__(self, package_id, cursor):
+            class File(object):
+                """
+                A file object, contains the following attributes
+                * file_id
+                * package_id
+                * relative_path
+                * file_hash
+                """
+                
+                def __init__(self, file_id, required_sql, cursor):
+                    """
+                    Takes the file_id and configures the required attributes
+                    """
+
+                    self.file_id = file_id
+                    self.SQL     = required_sql
+
+                    cursor.execute(self.SQL['get_file_for_sync'], str(file_id))
+
+                    (
+                        self.package_id
+                        , self.relative_path
+                        , self.file_hash
+                    ) = cursor.fetchone()
+
+            def __init__(self, package_id, required_sql, cursor):
                 """
                 Takes the package_id and configures the correct attributes
-                1. SELECT * FROM media_packages WHERE package_id = package_id
-                2. SELECT file_id FROM media_package_files WHERE package_id = package_id
-                3. file_list = list()
-                4. FOR file_id in cursor.fetchall():
-                    - file_list.append(self.File(file_id, cursor))
-
-                * Add in the media_package_type as well to make it fit into the source path.
                 """
-                pass
 
+                self.package_id = package_id
+                self.SQL = required_sql
 
-            def configure_for_client(self, client_id, cursor):
+                cursor.execute(self.SQL['get_package_for_sync'], str(package_id))
+
+                (
+                    self.name
+                    , self.folder_name
+                    , self.package_type_name
+                ) = cursor.fetchone()
+
+                self.file_list = []
+
+                cursor.execute(self.SQL['get_package_files'], str(package_id))
+
+                # Double check that passing through the cursor to the File class
+                #     doesn't screw up the cursor in this scope
+                for file_id in cursor.fetchall():
+                    self.file_list.append(self.File(file_id[0], self.SQL, cursor)) # <-- This cursor
+
+            def getFile(self, file_id, cursor):
                 """
-                Takes the client_id and configures the client specific attributes
-                1. SELECT sync_*, base_path FROM clients WHERE client_id = client_id
+                Returns a file object of the given file_id
                 """
-                pass
+
+                request_file = self.File(file_id, self.SQL, cursor)
+
+                if not request_file:
+                    self.logger.error('Unable to generate file object for id {0}'.format(file_id))
+                    return None
+
+                return request_file
 
 
-        def getFile(self, file_id):
+# <-- Need to implement this properly -->
+#            def get_parent_path(package_id):
+#                """
+#                Recursively returns the packages folder_name
+#                for as many parent/child relationships the package_id has
+#                """
+#                folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
+#                parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
+#
+#                if parent_id:
+#                    return folder_name[0] + get_parent_path(parent_id[0])
+#                else:
+#                    return folder_name[0]
+# <-- Need to implement this properly -->
+
+
+        def getFilePackage(self, package_id, cursor):
             """
-            Returns a file object of the given file_id
-            Supports client specific options if client_id is provided
+            Returns a file package object
             """
 
-            cursor = self.db_manager.get_cursor()
-
-            request_file = self.File(file_id, cursor)
-
-            if not request_file:
-                self.logger.error('Unable to generate file object for id {0}'.format(file_id))
-                return None
-
-            return request_file
-
-
-        def getFilePackage(self, package_id, client_id=None):
-            """
-            Returns a file package object (with optional ForClient specialization)
-            Supports client specific options if client_id is provided
-            Note: Client specific options are applied at a file package level
-            """
-
-            cursor = self.db_manager.get_cursor()
-
-            request_package = self.FilePackage(package_id, cursor)
+            request_package = self.FilePackage(package_id, self.SQL, cursor)
 
             if not request_package:
                 self.logger.error('Unable to generate file package for id {0}'.format(package_id))
                 return None
 
-            if client_id:
-                request_package.configure_for_client(client_id, cursor)
-
-            return request_file
+            return request_package
 
 
+if __name__ == '__main__':
+    from tester import TestManager
+    tester = TestManager()
+    tester.test_FilePackageManager()

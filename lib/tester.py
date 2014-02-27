@@ -1,19 +1,16 @@
-#
-#
-#
+
+
 class TestManager():
     """
     My dodgy method of testing before I integrate Unit Tests :)
     """
 
-    config_file = '/home/michael/Development/code/jobqueue_manager/default.conf'
-    db_file     = '/home/michael/Development/code/jobqueue_manager/manager.db'
-    db_schema   = '/home/michael/Development/code/jobqueue_manager/schema.sqlite3.sql'
+    config_file = '/home/michael/Development/Projects/jobqueue_manager/test.conf'
+    db_file     = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
+    db_schema   = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
     log_file    = '/tmp/{0}.log'
 
-    #
-    #
-    #
+
     def get_test_logger(self, log_name):
         import os
         from logger import Logger
@@ -26,9 +23,6 @@ class TestManager():
         return Logger(log_name, log_file).get_logger()
 
 
-    #
-    #
-    #
     def reset_db_schema(self, db_schema, logger=None):
         import os
         os.system('cat ' + db_schema + ' | sqlite3 ' + self.db_file)
@@ -37,17 +31,11 @@ class TestManager():
             logger.debug('Reset DB Schema to ' + self.db_schema)
 
 
-    #
-    #
-    #
     def dump_log(self, log_file):
         with open(log_file, 'r') as f:
             print(f.read())
 
 
-    #
-    #
-    #
     def test_Logger(self):
         # Setup
         test_name = 'manager_Logger'
@@ -69,9 +57,6 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
 
-    #
-    #
-    #
     def test_DBManager(self):
         # Setup
         test_name = 'manager_DBManager'
@@ -101,9 +86,6 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
 
-    #
-    #
-    #
     def test_JobManager(self):
         # Setup
         test_name = 'manager_JobManager'
@@ -141,9 +123,7 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-    #
-    #
-    #
+
     def test_JobQueueManager(self):
         # Setup
         test_name = 'manager_JobQueueManager'
@@ -159,9 +139,6 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
 
-    #
-    #
-    #
     def test_SyncManager(self):
         # Setup
         test_name = 'manager_SyncManager'
@@ -251,9 +228,91 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
 
-#
-#
-#
+    def test_ClientManager(self):
+        # Setup
+        test_name = 'manager_ClientManager'
+        logger = self.get_test_logger(test_name)
+
+        from config import ConfigManager
+        config = ConfigManager(self.config_file).get_config()
+
+        from db import SQLite3_DBManager
+        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+
+        self.reset_db_schema(self.db_schema, logger)
+
+        from client import ClientManager
+        client_manager = ClientManager(db_manager, logger)
+
+        # Testing
+        client_id = 1
+        client = client_manager.getClient(client_id, db_manager.get_cursor())
+
+        if not client:
+            logger.info('Error obtaining client')
+
+        attributes = [ 'sync_hostname', 'sync_port', 'sync_user', 'base_path' ]
+        answers    = [ 'atlas', '22', 'test', '/data/media/' ]
+
+        for attribute, answer in zip(attributes, answers):
+            logger.info("{0}='{1}'".format(attribute,getattr(client, attribute)))
+            assert str(getattr(client, attribute)) == answer
+
+        # Print Results
+        self.dump_log(self.log_file.format(test_name))
+
+
+    def test_FilePackageManager(self):
+        # Setup
+        test_name = 'manager_FilePackageManager'
+        logger = self.get_test_logger(test_name)
+
+        from config import ConfigManager
+        config = ConfigManager(self.config_file).get_config()
+
+        from db import SQLite3_DBManager
+        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+
+        self.reset_db_schema(self.db_schema, logger)
+
+        from filepackage import FilePackageManager
+        filepackage_manager = FilePackageManager(db_manager, logger)
+
+        # Testing
+        package_id = 1
+        test_package = filepackage_manager.getFilePackage(package_id, db_manager.get_cursor())
+
+        if not test_package:
+            logger.error('Unable to generate FilePackage object')
+
+        attributes = [ 'package_id', 'name', 'folder_name', 'package_type_name' ]
+        answers    = [ 
+                        str(package_id)
+                        , 'Movie 1'
+                        , 'Movie 1 (2009)/'
+                        , 'Movie'
+                     ]
+
+
+        for attribute, answer in zip(attributes, answers):
+            logger.info("{0}='{1}'".format(attribute,getattr(test_package, attribute)))
+            print("{0}='{1}'".format(attribute,getattr(test_package, attribute)))
+            assert str(getattr(test_package, attribute)) == answer
+
+
+        assert getattr(test_package, 'file_list')
+
+        attributes   = [ 'file_id', 'package_id', 'relative_path', 'file_hash' ]
+
+        for test_file in test_package.file_list:
+            for attribute, answer in zip(attributes, answers):
+                logger.info("{0}='{1}'".format(attribute,getattr(test_file, attribute)))
+                assert getattr(test_file, attribute)
+
+        # Print Results
+        self.dump_log(self.log_file.format(test_name))
+
+
 if __name__ == '__main__':
     """
     Run through all test_*'s we have created
@@ -264,8 +323,10 @@ if __name__ == '__main__':
     # Run through the test cases we have so far
     # (no way of dynamically figuring out what we have coded so far)
     # (maybe something like getattr on self.test_* ?
-    #tester.test_Logger()
-    #tester.test_DBManager()
-    #tester.test_JobManager()
-    #tester.test_JobQueueManager()
+    tester.test_Logger()
+    tester.test_DBManager()
+    tester.test_JobManager()
+    tester.test_JobQueueManager()
     tester.test_SyncManager()
+    tester.test_ClientManager()
+    tester.test_FilePackageManager()

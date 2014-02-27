@@ -9,13 +9,9 @@ import atexit
 import db
 from logger import Logger
 from jobs   import JobManager
-from sync   import SyncManager
 from config import ConfigManager
 
 
-#
-#
-#
 class JobQueueManager():
     """
     Handles the monitoring of the JobQueue and runs jobs

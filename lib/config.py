@@ -1,6 +1,5 @@
-#
-#
-#
+
+
 class ConfigManager():
     """
     Parses the JobQueue Manager config file returning a Config() object
@@ -31,9 +30,6 @@ class ConfigManager():
         pass
 
 
-    #
-    #
-    #
     def __init__(self, config_file):
         """
         Parse config file
@@ -69,9 +65,6 @@ class ConfigManager():
                         raise self.ConfigMissingPart("Config file is missing option: " + option)
 
 
-    #
-    #
-    #
     def get_config(self):
         """
         Return ConfigParser() object

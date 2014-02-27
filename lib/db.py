@@ -30,7 +30,8 @@ class DBManager():
         SQL['get_job']    = 'SELECT * FROM job_queue WHERE job_id = ?'
         SQL['delete_job'] = 'DELETE FROM job_queue WHERE job_id = ?'
         SQL['get_archived_job'] = 'SELECT * FROM job_history WHERE job_id = ?'
-        SQL['get_file']   = """
+
+        SQL['get_file_for_sync']   = """
             SELECT
                 mpf.package_id
                 , mf.relative_path
@@ -42,13 +43,44 @@ class DBManager():
             WHERE
                 mf.file_id = ?
         """
-        SQL['get_package'] = 'SELECT * FROM media_packages WHERE package_id = ?'
-        SQL['get_client']  = 'SELECT * FROM clients WHERE client_id = ?'
+
+        SQL['get_package_for_sync'] = """
+            SELECT
+                mp.name
+                , mp.folder_name
+                , mpt.name
+            FROM
+                media_packages AS mp
+            JOIN
+                media_package_types AS mpt ON mpt.package_type_id = mp.package_type_id
+            WHERE
+                package_id = ?
+        """
+
+        SQL['get_client_for_sync']  = """
+            SELECT
+                sync_hostname
+                , sync_port
+                , sync_user
+                , base_path
+            FROM
+                clients
+            WHERE
+                client_id = ?
+        """
 
         SQL['get_package_parent']   = 'SELECT parent_id FROM media_package_links WHERE child_id = ?'
         SQL['get_package_children'] = 'SELECT child_id FROM media_package_links WHERE parent_id = ?'
         SQL['get_package_files']    = 'SELECT file_id FROM media_package_files WHERE package_id = ?'
-        SQL['get_client_packages']  = 'SELECT package_id FROM media_package_availability WHERE client_id = ?'
+
+        SQL['get_client_packages']  = """
+            SELECT
+                package_id
+            FROM
+                media_package_availability
+            WHERE
+                client_id = ?
+        """
 
         return { i: SQL[i] for i in SQL if i in list_of_cmds }
 
