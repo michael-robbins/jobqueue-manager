@@ -1,9 +1,12 @@
 Short Term:
-* Start coding the sync.py file
-* Add support for media packages
 * Write tests for everything
-  - Start with db.py and the provided schema for SQLite3
+  - 'crappy tests' are now up to date
+* Rewrite sync.py to include the FilePackage and Client objects
+* Getting Ubuntu start-stop daemon working with files
 
 Long Term:
 * Turn the test.py into unit tests
   - Tear up/downs for PSQL/SQLite3
+* Look into how it will interact with the frontend
+  - What extra DB schema fields/tables will be required?
+  - What extra Object functions will I need? (not syncing related, but 'information' related)
