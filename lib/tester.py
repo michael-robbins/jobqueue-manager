@@ -294,18 +294,19 @@ class TestManager():
                      ]
 
 
+        # Check the package is fine
         for attribute, answer in zip(attributes, answers):
             logger.info("{0}='{1}'".format(attribute,getattr(test_package, attribute)))
-            print("{0}='{1}'".format(attribute,getattr(test_package, attribute)))
             assert str(getattr(test_package, attribute)) == answer
 
-
+        # Assert the package has a file_list
         assert getattr(test_package, 'file_list')
 
-        attributes   = [ 'file_id', 'package_id', 'relative_path', 'file_hash' ]
+        file_attributes = [ 'file_id', 'package_id', 'relative_path', 'file_hash' ]
 
+        # Loop through the file list asserting all files have all their required attributes
         for test_file in test_package.file_list:
-            for attribute, answer in zip(attributes, answers):
+            for attribute in file_attributes:
                 logger.info("{0}='{1}'".format(attribute,getattr(test_file, attribute)))
                 assert getattr(test_file, attribute)
 
@@ -321,8 +322,6 @@ if __name__ == '__main__':
     tester = TestManager()
 
     # Run through the test cases we have so far
-    # (no way of dynamically figuring out what we have coded so far)
-    # (maybe something like getattr on self.test_* ?
     tester.test_Logger()
     tester.test_DBManager()
     tester.test_JobManager()
