@@ -133,7 +133,7 @@ class TestManager():
         jqm = JobQueueManager(self.config_file, False, False)
 
         # Testing
-        jqm.start()
+        jqm.start(oneshot=True)
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))

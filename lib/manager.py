@@ -92,7 +92,7 @@ class JobQueueManager():
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
 
-    def run(self):
+    def run(self, oneshot=False):
         """
         Main worker loop
         """
@@ -121,10 +121,14 @@ class JobQueueManager():
                 self.logger.info('Job queue is empty.')
             
             sleep_time = float(self.config['DAEMON']['sleep'])
+
+            if oneshot:
+                break
+
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
-        if not job_manager.isalive():
+        if not job_manager.is_alive():
             self.logger.info('job_manager.isalive() is false, exiting')
             return True
         else:
@@ -132,7 +136,7 @@ class JobQueueManager():
             return False
 
 
-    def start(self):
+    def start(self, oneshot=False):
         """
         Start the daemon
         """
@@ -163,7 +167,7 @@ class JobQueueManager():
             print('INFO: Log file: ' + self.config['DAEMON']['log_file'])
 
         # Work our magic
-        self.run()
+        self.run(oneshot)
 
         # Finishing up properly
         self.logger.info('Finished successfully, bye bye!')
