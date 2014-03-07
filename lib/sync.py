@@ -11,11 +11,6 @@ class SyncManager():
     Handles pushing package files around the various clients
     """
     
-    HOST_USER    = 'user'
-    HOST_ADDRESS = 'address'
-    HOST_PORT    = 'port'
-    HOST_FILE    = 'file'
-
     SSH_WORKED   = 'ssh_worked'
     SSH_FAILED   = 'ssh_failed'
 
@@ -25,6 +20,13 @@ class SyncManager():
     VERIFICATION_FULL    = 'all_there'
     VERIFICATION_PARTIAL = 'kinda_there'
     VERIFICATION_NONE    = 'not_there'
+
+    PACKAGE_ACTION_FAILED = 'nope'
+    PACKAGE_ACTION_WORKED = 'yep'
+
+    REMOTE_PROG_HASH = 'sha256sum'
+    REMOTE_PROG_LS   = 'ls'
+    REMOTE_PROG_RM   = 'rm'
 
 
     def __init__(self, db_manager, logger):
@@ -38,112 +40,114 @@ class SyncManager():
         self.client_manager      = ClientManager(db_manager, logger)
 
 
-    def ssh_command(self, file_package, cmd):
+    def shell_out(self, command):
+        """
+        Generic method to shell out to the OS
+        """
+
+        process = subprocess.check_output(
+                command
+                , stderr=subprocess.PIPE
+                , universal_newlines=True
+            )
+
+        return process
+
+
+    def ssh_command(self, client, cmd):
         """
         Executes an SSH command to the remote host and returns the SSH output
         Assumes SSH Keys are setup and password-less auth works
         """
+
         command = [ 'ssh' ]
 
+        # If the object isn't iterable we bail
         if not hasattr(cmd, '__iter__'):
             self.logger.error("Command given must be in a list (iterable), not a string")
             return self.SSH_FAILED
 
-        if self.HOST_ADDRESS not in file_package:
-            self.logger.error("Missing address in file_package")
+        if not client.hostname:
+            self.logger.error("Missing hostname in client")
             return self.SSH_FAILED
 
-        if self.HOST_PORT in file_package:
-            command.append('-p {0}'.format(file_package[self.HOST_PORT]))
+        if client.port:
+            command.append('-p {0}'.format(client.port))
 
-        if self.HOST_USER in file_package:
-            command.append(file_package[self.HOST_USER] + '@' + file_package[self.HOST_ADDRESS])
+        if client.username:
+            command.append(client.username + '@' + client.hostname)
         else:
-            command.append(file_package[self.HOST_ADDRESS])
+            command.append(client.hostname)
 
         command.extend(cmd)
 
         self.logger.debug("SSH COMMAND: {0}".format(" ".join(command)))
-        sshProcess = subprocess.check_output(
-                command
-                , stderr=subprocess.PIPE
-                , universal_newlines=True
-            )
 
-        return sshProcess
+        return shell_out(command)
 
 
-    def rsync_file(self, src_file_package, dst_file_package):
+    def rsync_file(self, src_client, dst_client, rel_file_path):
         """
         Supports sending a file from a [local|remote] host
-        to its opposite [remote|local] destination
+        to its respective [remote|local] destination
+
+        This assumes that [src|dst]_file is the fully qualified file path
         """
 
-        command = ['rsync', '-v', '--progress', '--verbose', '--compress']
+        command = ['rsync'] 
 
-        def is_remote(file_package):
-            """
-            Checks to see if the file host is remote (has address or port)
-            """
-            if self.HOST_ADDRESS in file_package:
-                return True
-            elif self.HOST_PORT in file_package:
-                return True
-            else:
-                return False
+        # Turn this into a variable maybe?
+        command.extend(['--progress', '--verbose', '--compress'])
 
-        if is_remote(src_file_package) and is_remote(dst_file_package):
+        # Check that we dont have both as a 'remote' client
+        if src_client.hostname and dst_client.hostname:
             self.logger.error("Cannot have both as remote hosts")
-            return None
+            return self.RSYNC_FAILED
 
-        def is_remote_with_user(file_package):
-            """
-            Extends is_remote with if we have a user or not as well
-            """
-            if is_remote(file_package) and self.HOST_USER in file_package:
-                return True
-            else:
-                return False
+        # Check to ensure at least one client is 'remote'
+        if not src_client.hostname and not dst_client.hostname:
+            self.logger.error("At least one client needs to be a remote client")
+            return self.RSYNC_FAILED
 
-        if is_remote_with_user(src_file_package) or is_remote_with_user(dst_file_package):
-            self.logger.warn("rsync user defaulting to the user it was run as")
+        # Report if we are defaulting to the default user
+        if (src_client.hostname and not src_client.username)
+                    or (dst_client.hostname and not dst_client.username):
+            self.logger.warn("rsync user defaulting to the username '{0}'".format(os.getlogin()))
 
-
-        if self.HOST_PORT in src_file_package:
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_file_package[self.HOST_PORT])))
-        elif self.HOST_PORT in dst_file_package:
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_file_package[self.HOST_PORT])))
+        # Extend the rsync command with the port of the remote user
+        if src_client.port:
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_client.port)))
+        elif dst_client.port:
+            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_client.port)))
         else:
-            self.logger.warn("Assuming port of 22 for rsync call")
+            self.logger.warn("Assuming port for 22 for rsync call")
 
         # We now have the base part of the command done
         # we process the source and then destination parts
         
-        def build_rsync_location(file_package):
+        def build_rsync_location(client, file_path):
+            """
+            Takes a client and a file_object
+            """
             location = ''
 
-            if self.HOST_USER in file_package:
-                location += file_package[self.HOST_USER] + '@'
+            if client.username:
+                location += client.username + '@'
 
-            if self.HOST_ADDRESS in file_package:
-                location += file_package[self.HOST_ADDRESS] + ':'
+            if client.hostname:
+                location += client.hostname + ':'
 
-            location += file_package[self.HOST_FILE]
+            location += client.base_path + file_path
 
             return location
 
 
-        for file_package in [src_file_package, dst_file_package]:
-            command.append(build_rsync_location(file_package))
+        for client in [src_client, dst_client]:
+            command.append(build_rsync_location(client, rel_file_path))
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
-        rsyncProcess = subprocess.check_output(
-                command
-                , stderr=subprocess.PIPE
-                , universal_newlines=True
-            )
 
-        return rsyncProcess
+        return shell_out(command)
 
 
     def handle_package(self, package_id, src_client_id, dst_client_id, action_id, cursor=None):
@@ -154,52 +158,52 @@ class SyncManager():
         if not cursor:
             cursor = self.db_manager.get_cursor()
 
-        self.logger.debug("{0} package {1} from {2} to {3}".format(action_id, package_id,
+        self.logger.debug("{0}'ing package {1} from {2} to {3}".format(action_id, package_id,
                                 src_client_id, dst_client_id ))
 
+        src_client   = self.client_manager.getClient(src_client_id, cursor)
+        dst_client   = self.client_manager.getClient(dst_client_id, cursor)
+        file_package = self.filepackage_manager.getFilePackage(package_id, cursor)
+
         if action_id == 1: # Sync
-            if verify_package(package_id, src_client_id) != self.VERIFICATION_FULL:
-                self.logger.error('Source package is incomplete or corrupt')
-                return False
+            if verify_package(src_client, file_package) != self.VERIFICATION_FULL:
+                self.logger.error('Source package is incomplete or corrupt, bailing')
+                return self.PACKAGE_ACTION_FAILED
+            else:
+                self.logger
 
-            if verify_package(package_id, dst_client_id) == self.VERIFICATION_FULL:
-                self.logger.error('Destination package exists already...')
-                return False
+            if verify_package(dst_client, file_package) == self.VERIFICATION_FULL:
+                self.logger.error('Destination package exists already, returning that it worked')
+                return self.PACKAGE_ACTION_WORKED
+            else:
+                self.logger.info("Destination is missing the package (or part of it)")
 
-            if transfer_package(package_id, src_client_id, dst_client_id):
+            if transfer_package(src_client, dst_client, file_package) == self.PACKAGE_ACTION_WORKED:
                 self.logger.info('Completed package transfer')
+                return self.PACKAGE_ACTION_WORKED
             else:
                 self.logger.error('Failed package verification')
-
-            if verify_package(package_id, client_id) == self.VERIFICATION_FULL:
-                self.logger.info('Completed package verification')
-                return True
-            else:
-                self.logger.error('Failed package verification')
-                return False
+                return self.PACKAGE_ACTION_FAILED
 
         if action_id == 2: # Delete
-            if verify_package(package_id, dst_client_id) != self.VERIFICATION_FULL:
+            if verify_package(dst_client, file_package) != self.VERIFICATION_FULL:
                 self.logger.error('Destination package is not complete, skipping')
-                return False
+                return self.PACKAGE_ACTION_FAILED
             else:
                 self.logger.debug('Destination package is in a good condition to delete')
 
-            if delete_package(package_id, dst_client_id):
+            if delete_package(dst_client, file_package):
                 self.logger.info('Package deletion completed')
+                return self.PACKAGE_ACTION_WORKED
             else:
                 self.logger.error('Package deletion failed')
-
-            if verify_package(package_id, dst_client_id) != self.VERIFICATION_NONE:
-                self.logger.error('Package verification failed')
-            else:
-                self.logger.debug('Package verification worked')
+                return self.PACKAGE_ACTION_FAILED
 
         if action_id == 3: # Reindex
-            pass # Not implemented yet
+            # This is not implemented yet
+            return self.PACKAGE_ACTION_FAILED
 
-
-    def transfer_package(self, package_id, src_client_id, dst_client_id, cursor=None):
+    def transfer_package(self, src_client, dst_client, file_package, cursor=None):
         """
         Wrapper around transfer_file
         """
@@ -209,49 +213,38 @@ class SyncManager():
 
         bad_transfers = []
 
-        file_package = self.filepackage_manager.getFilePackage(package_id, src_client_id)
-        src_client   = self.client_manager.getClient(src_client_id)
-        dst_client   = self.client_manager.getClient(src_client_id)
-        dst_file_package = self.filepackage_manager.getFilePackage(package_id, dst_client_id)
+        for package_file in file_package.file_list:
+            if not transfer_file(src_client, dst_client, package_file):
+                bad_transfers.append(package_file)
 
-        for file_id in cursor.execute(self.sql['get_file_packages'], package_id).fetchall():
-            file_id = file_id[0]
-
-            src_file_package = get_file(src_client_id, file_id)
-            dst_file_package = get_file(dst_client_id, file_id)
-
-            if not transfer_file(src_file_package, dst_file_package):
-                bad_transfers.append(file_id)
-
-        if verify_package(package_id, dst_client_id):
+        if verify_package(dst_client, file_package):
             self.logger.info('Transfer of package worked')
-            return True
+            return self.PACKAGE_ACTION_WORKED
         else:
             self.logger.error('Transfer of package failed')
             self.logger.error('Failed file_id\'s were: ' + ' '.join(bad_transfers))
-            return False
+            return self.PACKAGE_ACTION_FAILED
 
 
-    def transfer_file(self, src_file_package, dst_file_packge):
+    def transfer_file(self, src_client, dst_client, package_file):
         """
         Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
         """
 
-        if verify_file(dst_file_package):
+        if verify_file(dst_client, package_file):
             self.logger.debug('File already exists, skipping transfer')
             return True
 
-        rsyncResult = rsync_file(src_file_package, dst_file_package)
+        rsyncResult = rsync_file(src_client, dst_client, package_file)
 
-        if verify_file(dst_file_package):
+        if verify_file(dst_client, package_file):
             return True
         else:
             self.logger.error('Failed to transfer file {0} from {1} to {2}'.format(
-                                file_id, src_client_id, dst_client_id))
+                                package_file, src_client, dst_client))
             return False
 
-
-    def delete_package(self, package_id, client_id, cursor=None):
+    def delete_package(self, client, file_package, cursor=None):
         """
         Takes a single package and deletes it off the client
         """
@@ -261,46 +254,42 @@ class SyncManager():
 
         bad_files = []
 
-        for file_id in cursor.execute(self.sql['get_file_packages'], package_id).fetchall():
-            file_id = file_id[0]
-
-            file_package = get_file(client_id, file_id)
-
-            if not delete_file(file_package, cursor):
-                bad_files.append(file_id)
+        for package_file in file_package.file_list:
+            if delete_file(client, package_file) == self.PACKAGE_ACTION_FAILED:
+                bad_files.append(package_file)
 
         if bad_files:
-            self.logger.error('Unable to delete file_id\'s: ' + ' '.join(bad_files))
-            return False
+            self.logger.error('Unable to delete file\'s: ' + ' '.join(bad_files))
+            return self.PACKAGE_ACTION_FAILED
         else:
-            self.logger.debug('Deleted packge {0} off client {1}'.format(package_id, client_id))
-            return True
+            self.logger.debug('Deleted packge {0} off client {1}'.format(file_package, client))
+            return self.PACKAGE_ACTION_WORKED
 
-
-    def delete_file(self, file_package):
+    def delete_file(self, client, package_file):
         """
         Deletes a file off the target client
         """
 
-        if not verify_file(file_package):
+        if not verify_file(client, package_file):
             self.logger.error('File package is missing or corrupt')
 
+        full_path = client.base_path + package_file.relative_path
+
         try:
-            self.ssh_command(file_package, ['rm', file_package[self.HOST_FILE]])
+            self.ssh_command(clieent, [self.REMOTE_PROG_RM, file_path])
         except subprocess.CalledProcessError:
             self.logger.error('Something went wrong during the remote rm process')
 
-        if verify_file(file_package):
+        if verify_file(client, package_file):
             self.logger.error('File package {0} failed to delete off {1}'.format(
-                            file_package[self.HOST_FILE], file_package[self.HOST_ADDRESS]))
-            return False
+                            package_file, client))
+            return self.PACKAGE_ACTION_FAILED
 
-        return True
+        return self.PACKAGE_ACTION_WORKED
 
-
-    def verify_package(self, package_id, client_id, cursor=None):
+    def verify_package(self, client, file_package, cursor=None):
         """
-        Takes a single package and ensures it exists on the client
+        Takes a single package and ensures it exists on the given client
         """
 
         if not cursor:
@@ -308,61 +297,58 @@ class SyncManager():
 
         bad_files  = []
 
-        count = 0
-        for file_id in cursor.execute(self.sql['get_file_packages'], package_id).fetchall():
-            count += 1
-            file_id = file_id[0]
+        for package_file in file_package.file_list:
+            if verify_file(client, package_file) == self.VERIFICATION_NONE:
+                bad_files.append(package_file)
 
-            file_package = get_file(client_id, file_id)
-
-            if verify_file(file_package) == self.VERIFICATION_NONE:
-                bad_files.append(file_id)
-
-        if bad_files and (len(bad_files) == count or len(bad_files) > count):
-            return self.VERIFICATION_NONE
-        elif bad_files and len(bad_files) < count:
-            return self.VERIFICATION_PARTIAL
+        if bad_files:
+            if len(bad_files) >= len(file_package.file_list):
+                return self.VERIFICATION_NONE
+            else:
+                return self.VERIFICATION_PARTIAL
         else:
             return self.VERIFICATION_FULL
 
-
-    def verify_file(self, file_package):
+    def verify_file(self, client, package_file):
         """
-        1. file_package = get_file(client_id, file_id)
-        2. Perform remote file existence check
-        3. Perform remote hash of file
-        4. Return False on missing or hash check fail
+        Ensures that the given file:
+        1. Exists on the client
+        2. Matches the hash
         """
 
+        full_path = client.base_path + package_file.relative_path
+
+        # Verify the file exists at all
         try:
-            self.ssh_command(file_package, ['ls', file_package[self.HOST_FILE]])
+            self.ssh_command(client, [self.REMOTE_PROG_LS, full_path])
         except subprocess.CalledProcessError:
             self.logger.error('Missing file {0} on client {1}'.format(
-                            file_package[self.HOST_FILE]
-                            , file_package[self.HOST_ADDRESS]
+                            package_file
+                            , client
                         ))
             return self.VERIFICATION_NONE
 
+        # Verify the remote hash against the one we have
         try:
             sshOutput = self.ssh_command(
-                            file_package
-                            , ['sha256sum', file_package[self.HOST_FILE]]
+                            client
+                            , [self.REMOTE_PROG_HASH, full_path]
                         )
         except subprocess.CalledProcessError:
             self.logger.error('Unable to perform remote hash for file {0} on client {1}'.format(
-                            file_package[self.HOST_FILE]
-                            , file_package[self.HOST_ADDRESS]
+                            package_file
+                            , client
                         ))
 
         remote_hash = sshOutput.rstrip().split(' ')[0]
 
-        if file_package['hash'] == remote_hash:
-            self.logger.debug('Remote file hash matches')
+        if package_file.file_hash == remote_hash:
+            self.logger.debug('Remote file hash matches for {0}'.format(package_file))
             return self.VERIFICATION_FULL
         else:
             self.logger.error('File hash mismatch for file {0} on client {1}'.format(
-                            file_package[self.HOST_FILE]
-                            , file_package[self.HOST_ADDRESS]))
+                            package_file
+                            , client))
             return self.VERIFICATION_NONE
 
 

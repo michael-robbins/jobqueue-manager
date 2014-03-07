@@ -25,9 +25,9 @@ class ClientManager():
     class Client():
         """
         Client object, contains the following attributes:
-        * sync_hostname
-        * sync_port
-        * sync_user
+        * hostname
+        * port
+        * username
         * base_path
         """
 
@@ -41,11 +41,27 @@ class ClientManager():
             cursor.execute(self.SQL['get_client_for_sync'], str(client_id))
 
             (
-                self.sync_hostname
-                , self.sync_port
-                , self.sync_user
+                self.hostname
+                , self.port
+                , self.username
                 , self.base_path
             ) = cursor.fetchone()
+
+        def __str__(self):
+            """
+            Returns a pretty string representing the client
+            """
+            string = ''
+
+            if self.username:
+                string += self.username + '@'
+
+            string += self.hostname
+
+            if self.port:
+                string += ':' + self.port
+
+            return string
 
 
     def getClient(self, client_id, cursor):

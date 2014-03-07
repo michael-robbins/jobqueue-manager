@@ -47,7 +47,6 @@ class DBManager():
         SQL['get_package_for_sync'] = """
             SELECT
                 mp.name
-                , mp.folder_name
                 , mpt.name
             FROM
                 media_packages AS mp

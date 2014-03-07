@@ -15,7 +15,7 @@ class FilePackageManager():
             The rest will be provided to the child classes as cursors from the calling class
             """
 
-            self.logger     = logger
+            self.logger = logger
 
             self._required_sql = [
                     'get_file_for_sync'
@@ -28,8 +28,6 @@ class FilePackageManager():
                 ]
 
             self.SQL = db_manager.get_sql_cmds(self._required_sql)
-
-
 
 
         class FilePackage(object):
@@ -70,6 +68,13 @@ class FilePackageManager():
                         , self.file_hash
                     ) = cursor.fetchone()
 
+                def __str__(self):
+                    """
+                    Returns a pretty string representation of the file
+                    """
+                    return self.relative_path
+
+
             def __init__(self, package_id, required_sql, cursor):
                 """
                 Takes the package_id and configures the correct attributes
@@ -82,9 +87,10 @@ class FilePackageManager():
 
                 (
                     self.name
-                    , self.folder_name
                     , self.package_type_name
                 ) = cursor.fetchone()
+
+                self.folder_name = getParentPath(package_id, cursor)
 
                 self.file_list = []
 
@@ -94,6 +100,13 @@ class FilePackageManager():
                 #     doesn't screw up the cursor in this scope
                 for file_id in cursor.fetchall():
                     self.file_list.append(self.File(file_id[0], self.SQL, cursor)) # <-- This cursor
+
+            def __str__(self):
+                """
+                Returns a pretty string representation of the file package
+                """
+                return self.name
+
 
             def getFile(self, file_id, cursor):
                 """
@@ -109,20 +122,18 @@ class FilePackageManager():
                 return request_file
 
 
-# <-- Need to implement this properly -->
-#            def get_parent_path(package_id):
-#                """
-#                Recursively returns the packages folder_name
-#                for as many parent/child relationships the package_id has
-#                """
-#                folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
-#                parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
-#
-#                if parent_id:
-#                    return folder_name[0] + get_parent_path(parent_id[0])
-#                else:
-#                    return folder_name[0]
-# <-- Need to implement this properly -->
+            def get_parent_path(package_id, cursor):
+                """
+                Recursively returns the packages folder_name
+                for as many parent/child relationships the package_id has
+                """
+                folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
+                parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
+
+                if parent_id:
+                    return folder_name[0] + get_parent_path(parent_id[0])
+                else:
+                    return folder_name[0]
 
 
         def getFilePackage(self, package_id, cursor):
