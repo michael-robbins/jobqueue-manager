@@ -1,5 +1,4 @@
 
-
 class TestManager():
     """
     My dodgy method of testing before I integrate Unit Tests :)
@@ -8,8 +7,8 @@ class TestManager():
     config_file = '/home/michael/Development/Projects/jobqueue_manager/test.conf'
     db_file     = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
     db_schema   = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
+    db_extra    = '/home/michael/Development/Projects/jobqueue_manager/test.sqlite3.sql'
     log_file    = '/tmp/{0}.log'
-
 
     def get_test_logger(self, log_name):
         import os
@@ -22,7 +21,6 @@ class TestManager():
 
         return Logger(log_name, log_file).get_logger()
 
-
     def reset_db_schema(self, db_schema, logger=None):
         import os
         os.system('cat ' + db_schema + ' | sqlite3 ' + self.db_file)
@@ -30,11 +28,9 @@ class TestManager():
         if logger:
             logger.debug('Reset DB Schema to ' + self.db_schema)
 
-
     def dump_log(self, log_file):
         with open(log_file, 'r') as f:
             print(f.read())
-
 
     def test_Logger(self):
         # Setup
@@ -55,7 +51,6 @@ class TestManager():
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
-
 
     def test_DBManager(self):
         # Setup
@@ -84,7 +79,6 @@ class TestManager():
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
-
 
     def test_JobManager(self):
         # Setup
@@ -123,7 +117,6 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-
     def test_JobQueueManager(self):
         # Setup
         test_name = 'manager_JobQueueManager'
@@ -137,7 +130,6 @@ class TestManager():
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
-
 
     def test_SyncManager(self):
         # Setup
@@ -212,20 +204,16 @@ class TestManager():
         sshOutput = sm.ssh_command(dst_details, ['rm', test_file])
         logger.info(sshOutput)
         
-        file_exists = True
         try:
             sshOutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
             logger.info(sshOutput)
-        except subprocess.CalledProcessError:
-            file_exists = False
-
-        if file_exists:
             logger.error('File still exists, remote rm did not work')
+        except subprocess.CalledProcessError:
+            pass
 
         # Test 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
-
 
     def test_ClientManager(self):
         # Setup
@@ -260,7 +248,6 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-
     def test_FilePackageManager(self):
         # Setup
         test_name = 'manager_FilePackageManager'
@@ -292,7 +279,6 @@ class TestManager():
                         , 'Movie'
                      ]
 
-
         # Check the package is fine
         for attribute, answer in zip(attributes, answers):
             logger.info("{0}='{1}'".format(attribute,getattr(test_package, attribute)))
@@ -312,7 +298,6 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-
 if __name__ == '__main__':
     """
     Run through all test_*'s we have created
@@ -325,6 +310,6 @@ if __name__ == '__main__':
     tester.test_DBManager()
     tester.test_JobManager()
     tester.test_JobQueueManager()
-    #tester.test_SyncManager() # Removed until I figure this out
+    tester.test_SyncManager() # Removed until I figure this out
     tester.test_ClientManager()
     tester.test_FilePackageManager()

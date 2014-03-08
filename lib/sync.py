@@ -2,9 +2,8 @@ import os
 import sys
 import shlex
 import subprocess
+from client import ClientManager
 from filepackage import FilePackageManager
-from client      import ClientManager
-
 
 class SyncManager():
     """
@@ -28,7 +27,6 @@ class SyncManager():
     REMOTE_PROG_LS   = 'ls'
     REMOTE_PROG_RM   = 'rm'
 
-
     def __init__(self, db_manager, logger):
         """
         Setup the DB interactions and logger
@@ -38,7 +36,6 @@ class SyncManager():
 
         self.filepackage_manager = FilePackageManager(db_manager, logger)
         self.client_manager      = ClientManager(db_manager, logger)
-
 
     def shell_out(self, command):
         """
@@ -52,7 +49,6 @@ class SyncManager():
             )
 
         return process
-
 
     def ssh_command(self, client, cmd):
         """
@@ -84,7 +80,6 @@ class SyncManager():
         self.logger.debug("SSH COMMAND: {0}".format(" ".join(command)))
 
         return shell_out(command)
-
 
     def rsync_file(self, src_client, dst_client, rel_file_path):
         """
@@ -148,7 +143,6 @@ class SyncManager():
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
 
         return shell_out(command)
-
 
     def handle_package(self, package_id, src_client_id, dst_client_id, action_id, cursor=None):
         """
@@ -350,7 +344,6 @@ class SyncManager():
                             package_file
                             , client))
             return self.VERIFICATION_NONE
-
 
 if __name__ == '__main__':
     from tester import TestManager
