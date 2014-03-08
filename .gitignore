@@ -35,3 +35,4 @@ nosetests.xml
 # Files we dont want in version control
 *.db
 test.conf
+test.sqlite3.sql
