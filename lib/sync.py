@@ -79,7 +79,7 @@ class SyncManager():
 
         self.logger.debug("SSH COMMAND: {0}".format(" ".join(command)))
 
-        return shell_out(command)
+        return self.shell_out(command)
 
     def rsync_file(self, src_client, dst_client, rel_file_path):
         """
@@ -105,7 +105,7 @@ class SyncManager():
             return self.RSYNC_FAILED
 
         # Report if we are defaulting to the default user
-        if (src_client.hostname and not src_client.username)
+        if (src_client.hostname and not src_client.username) \
                     or (dst_client.hostname and not dst_client.username):
             self.logger.warn("rsync user defaulting to the username '{0}'".format(os.getlogin()))
 
@@ -142,7 +142,7 @@ class SyncManager():
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
 
-        return shell_out(command)
+        return self.shell_out(command)
 
     def handle_package(self, package_id, src_client_id, dst_client_id, action_id, cursor=None):
         """
@@ -164,7 +164,7 @@ class SyncManager():
                 self.logger.error('Source package is incomplete or corrupt, bailing')
                 return self.PACKAGE_ACTION_FAILED
             else:
-                self.logger
+                self.logger.info('Source package is verified')
 
             if verify_package(dst_client, file_package) == self.VERIFICATION_FULL:
                 self.logger.error('Destination package exists already, returning that it worked')

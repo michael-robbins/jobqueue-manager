@@ -58,9 +58,9 @@ class DBManager():
 
         SQL['get_client_for_sync']  = """
             SELECT
-                sync_hostname
-                , sync_port
-                , sync_user
+                hostname
+                , port
+                , username
                 , base_path
             FROM
                 clients
@@ -68,6 +68,7 @@ class DBManager():
                 client_id = ?
         """
 
+        SQL['get_package_folder']   = 'SELECT folder_name FROM media_packages WHERE package_id = ?'
         SQL['get_package_parent']   = 'SELECT parent_id FROM media_package_links WHERE child_id = ?'
         SQL['get_package_children'] = 'SELECT child_id FROM media_package_links WHERE parent_id = ?'
         SQL['get_package_files']    = 'SELECT file_id FROM media_package_files WHERE package_id = ?'

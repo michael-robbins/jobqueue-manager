@@ -90,7 +90,7 @@ class FilePackageManager():
                     , self.package_type_name
                 ) = cursor.fetchone()
 
-                self.folder_name = getParentPath(package_id, cursor)
+                self.folder_name = self.getParentPath(package_id, cursor)
 
                 self.file_list = []
 
@@ -122,16 +122,16 @@ class FilePackageManager():
                 return request_file
 
 
-            def get_parent_path(package_id, cursor):
+            def getParentPath(self, package_id, cursor):
                 """
                 Recursively returns the packages folder_name
                 for as many parent/child relationships the package_id has
                 """
-                folder_name = cursor.execute(self.SQL['get_package_folder'], package_id).fetchone()
-                parent_id   = cursor.execute(self.SQL['get_package_parent'], package_id).fetchone()
+                folder_name = cursor.execute(self.SQL['get_package_folder'], str(package_id)).fetchone()
+                parent_id   = cursor.execute(self.SQL['get_package_parent'], str(package_id)).fetchone()
 
                 if parent_id:
-                    return folder_name[0] + get_parent_path(parent_id[0])
+                    return folder_name[0] + self.getParentPath(parent_id[0])
                 else:
                     return folder_name[0]
 

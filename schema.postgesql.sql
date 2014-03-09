@@ -49,9 +49,9 @@ CREATE TABLE clients (
     client_id SERIAL PRIMARY KEY
     , client_type_id INTEGER NOT NULL REFERENCES client_types(client_type_id) ON DELETE RESTRICT
     , name VARCHAR(64) NOT NULL
-    , sync_hostname VARCHAR(64) NOT NULL
-    , sync_port INTEGER NOT NULL
-    , sync_user VARCHAR(32) NOT NULL
+    , hostname VARCHAR(64) NOT NULL
+    , port INTEGER NOT NULL
+    , username VARCHAR(32) NOT NULL
     , base_path VARCHAR(256) NOT NULL DEFAULT '/'
 );
 

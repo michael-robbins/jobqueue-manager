@@ -1,4 +1,3 @@
-
 class TestManager():
     """
     My dodgy method of testing before I integrate Unit Tests :)
@@ -11,6 +10,9 @@ class TestManager():
     log_file    = '/tmp/{0}.log'
 
     def get_test_logger(self, log_name):
+        """
+        Returnsa test logger
+        """
         import os
         from logger import Logger
 
@@ -21,18 +23,41 @@ class TestManager():
 
         return Logger(log_name, log_file).get_logger()
 
-    def reset_db_schema(self, db_schema, logger=None):
+    def reset_db_schema(self, db_schema, db_extra, logger=None):
+        """
+        Resets the SQLite3 DB back to default
+        """
         import os
-        os.system('cat ' + db_schema + ' | sqlite3 ' + self.db_file)
+
+        os.system('cat ' + db_schema + ' | sqlite3 ' + self.db_file) # Schema file
+        os.system('cat ' + db_extra  + ' | sqlite3 ' + self.db_file) # Test data
 
         if logger:
             logger.debug('Reset DB Schema to ' + self.db_schema)
 
+    def testFile(self, file_name, file_contents):
+        """
+        Creates and returns a file object
+        """
+        try:
+            with open(file_name, 'w') as f:
+                f.write(file_contents)
+        except IOError:
+            logger.error('Unable to write test file: {0}'.format(file_name))
+            return False
+        return True
+
     def dump_log(self, log_file):
+        """
+        Dumps the test log file
+        """
         with open(log_file, 'r') as f:
             print(f.read())
 
     def test_Logger(self):
+        """
+        Tests out the Logger (yo dawg, I heard you like loggers)
+        """
         # Setup
         test_name = 'manager_Logger'
         logger = self.get_test_logger(test_name)
@@ -53,6 +78,9 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
     def test_DBManager(self):
+        """
+        Test the DB Mananger
+        """
         # Setup
         test_name = 'manager_DBManager'
         logger = self.get_test_logger(test_name)
@@ -63,7 +91,7 @@ class TestManager():
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
 
-        self.reset_db_schema(self.db_schema, logger)
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
         # Testing
         logger.debug('Opened connection and reset schema')
@@ -81,6 +109,9 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
     def test_JobManager(self):
+        """
+        Test the Job Manager
+        """
         # Setup
         test_name = 'manager_JobManager'
         logger = self.get_test_logger(test_name)
@@ -91,7 +122,7 @@ class TestManager():
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
 
-        self.reset_db_schema(self.db_schema, logger)
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
         from jobs import JobManager
         job_manager = JobManager(db_manager, logger)
@@ -118,6 +149,9 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
     def test_JobQueueManager(self):
+        """
+        Test the Job Queue Manager
+        """
         # Setup
         test_name = 'manager_JobQueueManager'
         logger = self.get_test_logger(test_name)
@@ -132,6 +166,9 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
     def test_SyncManager(self):
+        """
+        Test the Sync Manager
+        """
         # Setup
         test_name = 'manager_SyncManager'
         logger = self.get_test_logger(test_name)
@@ -142,80 +179,87 @@ class TestManager():
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
 
-        self.reset_db_schema(self.db_schema, logger)
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
+        
+        from client import ClientManager
+        client_manager = ClientManager(db_manager, logger)
+
+        src_client_id = 2
+        dst_client_id = 3
+
+        src_client = client_manager.getClient(src_client_id, db_manager.get_cursor())
+        dst_client = client_manager.getClient(dst_client_id, db_manager.get_cursor())
+        
+        from filepackage import FilePackageManager
+        filepackage_manager = FilePackageManager(db_manager, logger)
+        
+        package_id = 1
+
+        file_package = filepackage_manager.getFilePackage(package_id, db_manager.get_cursor())
 
         from sync import SyncManager
-        sm = SyncManager(db_manager, logger)
-
-        package_id = 1
-        client_id  = 1
+        sync_manager = SyncManager(db_manager, logger)
 
         # Test an SSH command
-        client_details = dict()
-        client_details['address'] = 'olympus.dalmura.com.au'
-        client_details['port'] = '9999'
-        client_details['user'] = 'michael'
-
-        sshoutput = sm.ssh_command(client_details, ['ls', '-l']).rstrip()
-        logger.info(sshoutput)
+        sshOutput = sync_manager.ssh_command(dst_client, 'ls')
+        logger.info(sshOutput)
 
         # Generate our temporary file
-        import os
-        import subprocess
-        test_file = '/tmp/test.txt'
-        try:
-            with open(test_file, 'w') as f:
-                f.write('test\n')
-        except IOError:
-            logger.error('Unable to write test file')
+        relative_file_name = 'test.txt'
+        local_file_name = src_client.base_path + relative_file_name
+
+        if not createTestFile(local_file_name, 'test\n'):
+            logger.error('Failed to create the test file')
+            return False
 
         # Get it's hash
-        test_hash = subprocess.check_output(['sha256sum', test_file], universal_newlines=True)
+        import subprocess
+        test_hash = subprocess.check_output(['sha256sum', local_file_name], universal_newlines=True)
         test_hash = test_hash.split(' ')[0]
 
         # Test the rsync command
-        dst_details = dict()
-        dst_details['address'] = 'olympus.dalmura.com.au'
-        dst_details['port'] = '9999'
-        dst_details['user'] = 'michael'
-        dst_details['file'] = test_file
-        dst_details['hash'] = test_hash
-
-        src_details = dict()
-        src_details['file'] = test_file
-
-        rsyncOutput = sm.rsync_file(src_details, dst_details)
+        rsyncOutput = sync_manager.rsync_file(src_client, dst_client, relative_file_name)
         logger.info(rsyncOutput)
 
         try:
-            sshOutput = sm.ssh_command(dst_details, ['ls', '-l', test_file]).rstrip()
+            sshOutput = sync_manager.ssh_command(
+                            dst_client
+                            , ['ls', '-l', relative_file_name]
+                        ).rstrip()
             logger.info(sshOutput)
         except subprocess.CalledProcessError:
             logger.error('remote rsyncd file does not exist')
 
         # Remotely verify the file
-        if sm.verify_file(dst_details):
+        if sync_manager.verify_file(dst_client, relative_file_name):
             logger.info('Remote file verification worked')
         else:
             logger.error('Remote file verification failed')
 
-        # Remove the temp remote file
-        os.remove(test_file)
-        sshOutput = sm.ssh_command(dst_details, ['rm', test_file])
-        logger.info(sshOutput)
+        # Remove the temp local & remote file
+        import os
+        os.remove(local_file_name)
+
+        try:
+            sshOutput = sync_manager.ssh_command(dst_client, ['rm', relative_file_name])
+            logger.info(sshOutput)
+        except subprocess.CalledProcessError:
+            logger.error('Unable to delete remote file: {0}'.format(relative_file_name))
         
         try:
-            sshOutput = sm.ssh_command(dst_details, ['ls', '-l', test_file])
+            sshOutput = sync_manager.ssh_command(dst_client, ['ls', '-l', relative_file_name])
             logger.info(sshOutput)
             logger.error('File still exists, remote rm did not work')
         except subprocess.CalledProcessError:
-            pass
+            logger.info("File doesn't exist")
 
-        # Test 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
     def test_ClientManager(self):
+        """
+        Test the Client Manager
+        """
         # Setup
         test_name = 'manager_ClientManager'
         logger = self.get_test_logger(test_name)
@@ -226,7 +270,7 @@ class TestManager():
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
 
-        self.reset_db_schema(self.db_schema, logger)
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
         from client import ClientManager
         client_manager = ClientManager(db_manager, logger)
@@ -249,6 +293,9 @@ class TestManager():
         self.dump_log(self.log_file.format(test_name))
 
     def test_FilePackageManager(self):
+        """
+        Test the File Package Manager
+        """
         # Setup
         test_name = 'manager_FilePackageManager'
         logger = self.get_test_logger(test_name)
@@ -259,7 +306,7 @@ class TestManager():
         from db import SQLite3_DBManager
         db_manager = SQLite3_DBManager(config['MANAGER'], logger)
 
-        self.reset_db_schema(self.db_schema, logger)
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
         from filepackage import FilePackageManager
         filepackage_manager = FilePackageManager(db_manager, logger)

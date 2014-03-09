@@ -55,9 +55,9 @@ CREATE TABLE clients (
     client_id INTEGER PRIMARY KEY AUTOINCREMENT
     , client_type_id INTEGER NOT NULL
     , name TEXT NOT NULL
-    , sync_hostname TEXT NOT NULL
-    , sync_port INTEGER NOT NULL
-    , sync_user TEXT NOT NULL
+    , hostname TEXT NOT NULL
+    , port INTEGER NOT NULL
+    , username TEXT NOT NULL
     , base_path TEXT NOT NULL DEFAULT '/'
     , FOREIGN KEY(client_type_id) REFERENCES client_types(client_type_id) ON DELETE RESTRICT
 );
@@ -164,13 +164,13 @@ INSERT INTO media_package_types (name) VALUES ('TV Season'); -- 3
 
 -- Data tables, required for link tables
 INSERT INTO clients (
-    client_type_id, name, sync_hostname, sync_port, sync_user, base_path
+    client_type_id, name, hostname, port, username, base_path
 ) VALUES (
     1, 'Media Server', 'atlas', 22, 'test', '/data/media/'
 ); -- 1
 
 INSERT INTO clients (
-    client_type_id, name, sync_hostname, sync_port, sync_user, base_path
+    client_type_id, name, hostname, port, username, base_path
 ) VALUES (
     2, 'Media Player', 'prometheus', 'test', 22, '/data/media/'
 ); -- 2
