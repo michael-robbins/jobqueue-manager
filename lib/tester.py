@@ -35,7 +35,7 @@ class TestManager():
         if logger:
             logger.debug('Reset DB Schema to ' + self.db_schema)
 
-    def testFile(self, file_name, file_contents):
+    def createTestFile(self, file_name, file_contents, logger=None):
         """
         Creates and returns a file object
         """
@@ -43,7 +43,8 @@ class TestManager():
             with open(file_name, 'w') as f:
                 f.write(file_contents)
         except IOError:
-            logger.error('Unable to write test file: {0}'.format(file_name))
+            if logger:
+                logger.error('Unable to write test file: {0}'.format(file_name))
             return False
         return True
 
@@ -208,7 +209,7 @@ class TestManager():
         relative_file_name = 'test.txt'
         local_file_name = src_client.base_path + relative_file_name
 
-        if not createTestFile(local_file_name, 'test\n'):
+        if not self.createTestFile(local_file_name, 'test\n', logger):
             logger.error('Failed to create the test file')
             return False
 
