@@ -211,6 +211,7 @@ class TestManager():
 
         if not self.createTestFile(local_file_name, 'test\n', logger):
             logger.error('Failed to create the test file')
+            self.dump_log(self.log_file.format(test_name))
             return False
 
         # Get it's hash
