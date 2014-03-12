@@ -149,7 +149,6 @@ class FilePackageManager():
 
             return request_package
 
-
 if __name__ == '__main__':
     from tester import TestManager
     tester = TestManager()

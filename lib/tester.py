@@ -202,7 +202,7 @@ class TestManager():
         sync_manager = SyncManager(db_manager, logger)
 
         # Test an SSH command
-        sshOutput = sync_manager.ssh_command(dst_client, 'ls')
+        sshOutput = sync_manager.sshCommand(dst_client, 'ls')
         logger.info(sshOutput)
 
         # Generate our temporary file
@@ -220,11 +220,11 @@ class TestManager():
         test_hash = test_hash.split(' ')[0]
 
         # Test the rsync command
-        rsyncOutput = sync_manager.rsync_file(src_client, dst_client, relative_file_name)
+        rsyncOutput = sync_manager.rsyncFile(src_client, dst_client, relative_file_name)
         logger.info(rsyncOutput)
 
         try:
-            sshOutput = sync_manager.ssh_command(
+            sshOutput = sync_manager.sshCommand(
                             dst_client
                             , ['ls', '-l', relative_file_name]
                         ).rstrip()
@@ -233,7 +233,7 @@ class TestManager():
             logger.error('remote rsyncd file does not exist')
 
         # Remotely verify the file
-        if sync_manager.verify_file(dst_client, relative_file_name):
+        if sync_manager.verifyFile(dst_client, relative_file_name):
             logger.info('Remote file verification worked')
         else:
             logger.error('Remote file verification failed')
@@ -243,13 +243,13 @@ class TestManager():
         os.remove(local_file_name)
 
         try:
-            sshOutput = sync_manager.ssh_command(dst_client, ['rm', relative_file_name])
+            sshOutput = sync_manager.sshCommand(dst_client, ['rm', relative_file_name])
             logger.info(sshOutput)
         except subprocess.CalledProcessError:
             logger.error('Unable to delete remote file: {0}'.format(relative_file_name))
         
         try:
-            sshOutput = sync_manager.ssh_command(dst_client, ['ls', '-l', relative_file_name])
+            sshOutput = sync_manager.sshCommand(dst_client, ['ls', '-l', relative_file_name])
             logger.info(sshOutput)
             logger.error('File still exists, remote rm did not work')
         except subprocess.CalledProcessError:
