@@ -1,7 +1,6 @@
 Short Term:
 * Write tests for everything
   - 'crappy tests' are now up to date
-* Rewrite sync.py to include the FilePackage and Client objects
 * Getting Ubuntu start-stop daemon working with files
 
 Long Term:
@@ -9,4 +8,3 @@ Long Term:
   - Tear up/downs for PSQL/SQLite3
 * Look into how it will interact with the frontend
   - What extra DB schema fields/tables will be required?
-  - What extra Object functions will I need? (not syncing related, but 'information' related)
