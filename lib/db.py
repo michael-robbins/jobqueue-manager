@@ -68,6 +68,7 @@ class DBManager():
                 client_id = ?
         """
 
+        SQL['get_package_ids']      = 'SELECT package_id FROM media_packages'
         SQL['get_package_folder']   = 'SELECT folder_name FROM media_packages WHERE package_id = ?'
         SQL['get_package_parent']   = 'SELECT parent_id FROM media_package_links WHERE child_id = ?'
         SQL['get_package_children'] = 'SELECT child_id FROM media_package_links WHERE parent_id = ?'

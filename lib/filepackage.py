@@ -25,6 +25,7 @@ class FilePackageManager():
                     , 'get_file_packages'
                     , 'get_package_folder'
                     , 'get_package_files'
+                    , 'get_package_ids'
                 ]
 
             self.SQL = db_manager.get_sql_cmds(self._required_sql)
@@ -148,6 +149,20 @@ class FilePackageManager():
                 return None
 
             return request_package
+
+        def getAllFilePackageIds(self, cursor):
+            """
+            Returns all known FilePackage ids
+            """
+            filepackage_ids = list()
+
+            cursor.execute(self.SQL['get_package_ids'])
+
+            for i in cursor.fetchall():
+                filepackage_ids.append(i[0])
+
+            return filepackage_ids
+
 
 if __name__ == '__main__':
     from tester import TestManager

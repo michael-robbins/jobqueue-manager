@@ -63,9 +63,10 @@ class SyncManager():
             self.logger.error("Command given must be in a list (iterable), not a string")
             return self.SSH_FAILED
 
-        if not client.hostname:
-            self.logger.error("Missing hostname in client")
-            return self.SSH_FAILED
+        if not client.hostname and not client.port and not client.username:
+            self.logger.debug("Client is local, just shelling out without ssh")
+            self.logger.debug("LOCAL COMMAND: {0}".format(" ".join(cmd)))
+            return self.shellOut(cmd)
 
         if client.port:
             command.append('-p {0}'.format(client.port))
@@ -107,15 +108,15 @@ class SyncManager():
         # Report if we are defaulting to the default user
         if (src_client.hostname and not src_client.username) \
                     or (dst_client.hostname and not dst_client.username):
-            self.logger.warn("rsync user defaulting to the username '{0}'".format(os.getlogin()))
+            self.logger.debug("rsync user defaulting to the username '{0}'".format(os.getlogin()))
 
         # Extend the rsync command with the port of the remote user
-        if src_client.port:
+        if (src_client.hostname and src_client.port):
             command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_client.port)))
-        elif dst_client.port:
+        elif (dst_client.hostname and dst_client.port):
             command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_client.port)))
         else:
-            self.logger.warn("Assuming port for 22 for rsync call")
+            self.logger.debug("Assuming port for 22 for rsync call")
 
         # We now have the base part of the command done
         # we process the source and then destination parts
@@ -344,6 +345,49 @@ class SyncManager():
                             package_file
                             , client))
             return self.VERIFICATION_NONE
+
+    def discoverFilePackage(self, client, filepackage_ids=list()):
+        """
+        Given a client and an (optional) list of file_package id's
+        We attempt to verify each package on the client
+        If a verify returns a self.VERIFICATION_FULL we then associate the client to that package
+        """
+
+        full_verify = 0
+        part_verify = 0
+        none_verify = 0
+
+        if not filepackage_ids:
+            filepackage_ids = filepackage_mananger.getAllFilePackageIds(self.db_manager.get_cursor())
+
+        for filepackage_id in filepackage_ids:
+            file_package = self.filepackage_manager.getFilePackage(filepackage_id)
+
+            result_code, result_data = self.verifyPackage(client, file_package)
+
+            if result_code == self.VERIFICATION_FULL:
+                client.associateFilePackage(filepackage_id, self.VERIFICATION_FULL)
+                self.logger.info('Associating filepackage_id {0}'
+                                    + 'with client {1}'.format(filepackage_id, client))
+                full_verify += 1
+
+            elif result_code == self.VERIFICATION_PARTIAL:
+                client.associateFilePackage(filepackage_id, self.VERIFICATION_PARTIAL)
+                self.logger.info('Partially associating filepackage_id {0}'
+                                    + 'with client {1}'.format(filepackage_id, client))
+                part_verify += 1
+
+            else:
+                self.logger.info('Not associating filepackage_id {0}'
+                                    + 'with client {1}'.format(filepackage_id, client))
+                none_verify += 1
+
+        self.logger.info('Filepackage discovery over')
+        self.logger.info('total={0} full={1} partial={2} none={3}'.format(
+                            len(filepackage_ids)
+                            , full_verify
+                            , part_verify
+                            , none_verify))
 
 if __name__ == '__main__':
     from tester import TestManager
