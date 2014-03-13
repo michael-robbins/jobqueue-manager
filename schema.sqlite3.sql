@@ -172,7 +172,7 @@ INSERT INTO clients (
 INSERT INTO clients (
     client_type_id, name, hostname, port, username, base_path
 ) VALUES (
-    2, 'Media Player', 'prometheus', 'test', 22, '/data/media/'
+    2, 'Media Player', 'prometheus', 22, 'test', '/data/media/'
 ); -- 2
 
 INSERT INTO media_packages (
