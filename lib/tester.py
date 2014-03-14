@@ -35,12 +35,14 @@ class TestManager():
         if logger:
             logger.debug('Reset DB Schema to ' + self.db_schema)
 
-    def createTestFile(self, file_name, file_contents, logger=None):
+    def createTestFile(self, client, package_file, file_contents, logger=None):
         """
-        Creates and returns a file object
+        Creates a file on the specified client
         """
+        full_path = client.base_path + package_file.relative_path
+
         try:
-            with open(file_name, 'w') as f:
+            with open(full_path, 'w') as f:
                 f.write(file_contents)
         except IOError:
             if logger:
@@ -80,7 +82,7 @@ class TestManager():
 
     def test_DBManager(self):
         """
-        Test the DB Mananger
+        Test the DB Manager
         """
         # Setup
         test_name = 'manager_DBManager'
@@ -173,6 +175,8 @@ class TestManager():
         # Setup
         test_name = 'manager_SyncManager'
         logger = self.get_test_logger(test_name)
+        
+        import subprocess
 
         from config import ConfigManager
         config = ConfigManager(self.config_file).get_config()
@@ -185,12 +189,12 @@ class TestManager():
         from client import ClientManager
         client_manager = ClientManager(db_manager, logger)
 
-        src_client_id = 2
-        dst_client_id = 3
+        src_client_id = 3
+        dst_client_id = 4
 
         src_client = client_manager.getClient(src_client_id, db_manager.get_cursor())
         dst_client = client_manager.getClient(dst_client_id, db_manager.get_cursor())
-        
+
         from filepackage import FilePackageManager
         filepackage_manager = FilePackageManager(db_manager, logger)
         
@@ -201,59 +205,69 @@ class TestManager():
         from sync import SyncManager
         sync_manager = SyncManager(db_manager, logger)
 
-        # Test an SSH command
-        sshOutput = sync_manager.sshCommand(dst_client, 'ls')
-        logger.info(sshOutput)
+        # Test a local SSH command
+        try:
+            logger.info('Attempting local SSH call')
+            sshOutput = sync_manager.sshCommand(src_client, ['ls'])
+            logger.info(' '.join(sshOutput.split('\n')))
+        except subprocess.CalledProcessError:
+            logger.error('Unable to perform local ls')
+
+        # Test a remote SSH command
+        try:
+            logger.info('Attempting remote SSH call')
+            sshOutput = sync_manager.sshCommand(dst_client, ['ls'])
+            logger.info(sshOutput)
+        except subprocess.CalledProcessError:
+            logger.error('Unable to perform remote ls')
 
         # Generate our temporary file
-        relative_file_name = 'test.txt'
-        local_file_name = src_client.base_path + relative_file_name
+        class File(object):
+            self.relative_path = ''
+            self.file_hash = ''
 
-        if not self.createTestFile(local_file_name, 'test\n', logger):
+        package_file = File()
+        package_file.relative_path = 'test.txt'
+
+        local_file_name    = src_client.base_path + package_file.relative_path
+        remote_file_name   = dst_client.base_path + package_file.relative_path
+
+        if not self.createTestFile(src_client, package_file, 'test\n', logger):
             logger.error('Failed to create the test file')
             self.dump_log(self.log_file.format(test_name))
             return False
 
-        # Get it's hash
-        import subprocess
+        # Get the hash of the temporary file
         test_hash = subprocess.check_output(['sha256sum', local_file_name], universal_newlines=True)
         test_hash = test_hash.split(' ')[0]
 
-        # Test the rsync command
-        rsyncOutput = sync_manager.rsyncFile(src_client, dst_client, relative_file_name)
-        logger.info(rsyncOutput)
-
-        try:
-            sshOutput = sync_manager.sshCommand(
-                            dst_client
-                            , ['ls', '-l', relative_file_name]
-                        ).rstrip()
-            logger.info(sshOutput)
-        except subprocess.CalledProcessError:
-            logger.error('remote rsyncd file does not exist')
+        # Test transferring the file
+        if sync_manager.transfer_file(src_client, dst_client, package_file) \
+                != sync_manager.PACKAGE_ACTION_WORKED:
+            logger.error('Unable to rsync file to remote host')
 
         # Remotely verify the file
-        if sync_manager.verifyFile(dst_client, relative_file_name):
-            logger.info('Remote file verification worked')
-        else:
+        if sync_manager.verifyFile(dst_client, package_file) \
+                != sync_manager.VERIFICATION_FULL:
             logger.error('Remote file verification failed')
+        else:
+            logger.info('Remote file verification worked')
 
         # Remove the temp local & remote file
         import os
         os.remove(local_file_name)
 
-        try:
-            sshOutput = sync_manager.sshCommand(dst_client, ['rm', relative_file_name])
-            logger.info(sshOutput)
-        except subprocess.CalledProcessError:
-            logger.error('Unable to delete remote file: {0}'.format(relative_file_name))
+        if sync_manager.delete_file(dst_client, package_file) \
+                != sync_manager.PACKAGE_ACTION_WORKED:
+            logger.error('Unable to delete remote file: {0}'.format(remote_file_name))
+        else:
+            logger.info('Deleted remote file: {0}'.format(remote_file_name))
         
-        try:
-            sshOutput = sync_manager.sshCommand(dst_client, ['ls', '-l', relative_file_name])
-            logger.info(sshOutput)
+        if sync_manager.verifyFile(dst_client, package_file) \
+                != sync_manager.VERIFICATION_NONE:
             logger.error('File still exists, remote rm did not work')
-        except subprocess.CalledProcessError:
-            logger.info("File doesn't exist")
+        else:
+            logger.info("File doesn't exist, all good")
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
@@ -284,7 +298,7 @@ class TestManager():
         if not client:
             logger.info('Error obtaining client')
 
-        attributes = [ 'sync_hostname', 'sync_port', 'sync_user', 'base_path' ]
+        attributes = [ 'hostname', 'port', 'username', 'base_path' ]
         answers    = [ 'atlas', '22', 'test', '/data/media/' ]
 
         for attribute, answer in zip(attributes, answers):
@@ -359,6 +373,6 @@ if __name__ == '__main__':
     tester.test_DBManager()
     tester.test_JobManager()
     tester.test_JobQueueManager()
-    tester.test_SyncManager() # Removed until I figure this out
+    tester.test_SyncManager()
     tester.test_ClientManager()
     tester.test_FilePackageManager()

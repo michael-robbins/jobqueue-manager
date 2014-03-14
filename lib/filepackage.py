@@ -108,7 +108,6 @@ class FilePackageManager():
                 """
                 return self.name
 
-
             def getFile(self, file_id, cursor):
                 """
                 Returns a file object of the given file_id

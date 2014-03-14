@@ -59,7 +59,7 @@ class ClientManager():
             string += self.hostname
 
             if self.port:
-                string += ':' + self.port
+                string += ':{0}'.format(self.port)
 
             return string
 

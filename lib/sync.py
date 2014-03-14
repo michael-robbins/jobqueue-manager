@@ -226,18 +226,18 @@ class SyncManager():
         Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
         """
 
-        if verifyFile(dst_client, package_file):
+        if self.verifyFile(dst_client, package_file):
             self.logger.debug('File already exists, skipping transfer')
-            return True
+            return self.PACKAGE_ACTION_WORKED
 
         rsyncResult = rsyncFile(src_client, dst_client, package_file)
 
-        if verifyFile(dst_client, package_file):
-            return True
+        if self.verifyFile(dst_client, package_file):
+            return self.PACKAGE_ACTION_WORKED
         else:
             self.logger.error('Failed to transfer file {0} from {1} to {2}'.format(
                                 package_file, src_client, dst_client))
-            return False
+            return self.PACKAGE_ACTION_FAILED
 
     def delete_package(self, client, file_package, cursor=None):
         """
@@ -265,17 +265,17 @@ class SyncManager():
         Deletes a file off the target client
         """
 
-        if not verifyFile(client, package_file):
+        if not self.verifyFile(client, package_file) == self.VERIFICATION_FULL:
             self.logger.error('File package is missing or corrupt')
 
         full_path = client.base_path + package_file.relative_path
 
         try:
-            self.sshCommand(clieent, [self.REMOTE_PROG_RM, file_path])
+            self.sshCommand(client, [self.REMOTE_PROG_RM, full_path])
         except subprocess.CalledProcessError:
             self.logger.error('Something went wrong during the remote rm process')
 
-        if verifyFile(client, package_file):
+        if self.verifyFile(client, package_file):
             self.logger.error('File package {0} failed to delete off {1}'.format(
                             package_file, client))
             return self.PACKAGE_ACTION_FAILED
@@ -293,7 +293,7 @@ class SyncManager():
         bad_files  = []
 
         for package_file in file_package.file_list:
-            if verifyFile(client, package_file) == self.VERIFICATION_NONE:
+            if self.verifyFile(client, package_file) == self.VERIFICATION_NONE:
                 bad_files.append(package_file)
 
         if bad_files:
