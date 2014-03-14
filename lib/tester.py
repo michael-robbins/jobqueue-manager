@@ -168,110 +168,6 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-    def test_SyncManager(self):
-        """
-        Test the Sync Manager
-        """
-        # Setup
-        test_name = 'manager_SyncManager'
-        logger = self.get_test_logger(test_name)
-        
-        import subprocess
-
-        from config import ConfigManager
-        config = ConfigManager(self.config_file).get_config()
-
-        from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
-
-        self.reset_db_schema(self.db_schema, self.db_extra, logger)
-        
-        from client import ClientManager
-        client_manager = ClientManager(db_manager, logger)
-
-        src_client_id = 3
-        dst_client_id = 4
-
-        src_client = client_manager.getClient(src_client_id, db_manager.get_cursor())
-        dst_client = client_manager.getClient(dst_client_id, db_manager.get_cursor())
-
-        from filepackage import FilePackageManager
-        filepackage_manager = FilePackageManager(db_manager, logger)
-        
-        package_id = 1
-
-        file_package = filepackage_manager.getFilePackage(package_id, db_manager.get_cursor())
-
-        from sync import SyncManager
-        sync_manager = SyncManager(db_manager, logger)
-
-        # Test a local SSH command
-        try:
-            logger.info('Attempting local SSH call')
-            sshOutput = sync_manager.sshCommand(src_client, ['ls'])
-            logger.info(' '.join(sshOutput.split('\n')))
-        except subprocess.CalledProcessError:
-            logger.error('Unable to perform local ls')
-
-        # Test a remote SSH command
-        try:
-            logger.info('Attempting remote SSH call')
-            sshOutput = sync_manager.sshCommand(dst_client, ['ls'])
-            logger.info(sshOutput)
-        except subprocess.CalledProcessError:
-            logger.error('Unable to perform remote ls')
-
-        # Generate our temporary file
-        class File(object):
-            self.relative_path = ''
-            self.file_hash = ''
-
-        package_file = File()
-        package_file.relative_path = 'test.txt'
-
-        local_file_name    = src_client.base_path + package_file.relative_path
-        remote_file_name   = dst_client.base_path + package_file.relative_path
-
-        if not self.createTestFile(src_client, package_file, 'test\n', logger):
-            logger.error('Failed to create the test file')
-            self.dump_log(self.log_file.format(test_name))
-            return False
-
-        # Get the hash of the temporary file
-        test_hash = subprocess.check_output(['sha256sum', local_file_name], universal_newlines=True)
-        test_hash = test_hash.split(' ')[0]
-
-        # Test transferring the file
-        if sync_manager.transfer_file(src_client, dst_client, package_file) \
-                != sync_manager.PACKAGE_ACTION_WORKED:
-            logger.error('Unable to rsync file to remote host')
-
-        # Remotely verify the file
-        if sync_manager.verifyFile(dst_client, package_file) \
-                != sync_manager.VERIFICATION_FULL:
-            logger.error('Remote file verification failed')
-        else:
-            logger.info('Remote file verification worked')
-
-        # Remove the temp local & remote file
-        import os
-        os.remove(local_file_name)
-
-        if sync_manager.delete_file(dst_client, package_file) \
-                != sync_manager.PACKAGE_ACTION_WORKED:
-            logger.error('Unable to delete remote file: {0}'.format(remote_file_name))
-        else:
-            logger.info('Deleted remote file: {0}'.format(remote_file_name))
-        
-        if sync_manager.verifyFile(dst_client, package_file) \
-                != sync_manager.VERIFICATION_NONE:
-            logger.error('File still exists, remote rm did not work')
-        else:
-            logger.info("File doesn't exist, all good")
-
-        # Print Results
-        self.dump_log(self.log_file.format(test_name))
-
     def test_ClientManager(self):
         """
         Test the Client Manager
@@ -361,6 +257,124 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
+    def test_SyncManager(self):
+        """
+        Test the Sync Manager
+        """
+        # Setup
+        test_name = 'manager_SyncManager'
+        logger = self.get_test_logger(test_name)
+        
+        import subprocess
+
+        from config import ConfigManager
+        config = ConfigManager(self.config_file).get_config()
+
+        from db import SQLite3_DBManager
+        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+
+        self.reset_db_schema(self.db_schema, self.db_extra, logger)
+        
+        from client import ClientManager
+        client_manager = ClientManager(db_manager, logger)
+
+        src_client_id = 3
+        dst_client_id = 4
+
+        src_client = client_manager.getClient(src_client_id, db_manager.get_cursor())
+        dst_client = client_manager.getClient(dst_client_id, db_manager.get_cursor())
+
+        from filepackage import FilePackageManager
+        filepackage_manager = FilePackageManager(db_manager, logger)
+        
+        package_id = 1
+
+        file_package = filepackage_manager.getFilePackage(package_id, db_manager.get_cursor())
+
+        from sync import SyncManager
+        sync_manager = SyncManager(db_manager, logger)
+
+        # Test a local SSH command
+        try:
+            logger.info('Attempting local SSH call')
+            sshOutput = sync_manager.sshCommand(src_client, ['ls']).rstrip()
+            logger.info(sshOutput.replace('\n',' '))
+        except subprocess.CalledProcessError:
+            logger.error('Unable to perform local ls')
+
+        # Test a remote SSH command
+        try:
+            logger.info('Attempting remote SSH call')
+            sshOutput = sync_manager.sshCommand(dst_client, ['ls']).rstrip()
+            logger.info(sshOutput.replace('\n',' '))
+        except subprocess.CalledProcessError:
+            logger.error('Unable to perform remote ls')
+
+        # Generate our temporary file
+        class File(object):
+            self.relative_path = ''
+            self.file_hash = ''
+            def __str__(self): return self.relative_path
+
+        package_file = File()
+        package_file.relative_path = 'test.txt'
+
+        local_file_name    = src_client.base_path + package_file.relative_path
+        remote_file_name   = dst_client.base_path + package_file.relative_path
+
+        if not self.createTestFile(src_client, package_file, 'test\n', logger):
+            logger.error('Failed to create the test file')
+            self.dump_log(self.log_file.format(test_name))
+            return False
+        else:
+            logger.info('Created test file: ' + local_file_name)
+
+        # Get the hash of the temporary file
+        test_hash = subprocess.check_output(['sha256sum', local_file_name], universal_newlines=True)
+        package_file.file_hash = test_hash.split(' ')[0]
+        logger.info('Created local hash of: {0}'.format(package_file.file_hash))
+
+        logger.info('About to locally verify file')
+        if sync_manager.verifyFile(src_client, package_file) \
+                != sync_manager.VERIFICATION_FULL:
+            logger.error('Unable to locally verify file')
+
+        # Test transferring the file
+        logger.info('About to transfer file')
+        if sync_manager.transfer_file(src_client, dst_client, package_file) \
+                != sync_manager.PACKAGE_ACTION_WORKED:
+            logger.error('Unable to rsync file to remote host')
+        else:
+            logger.info('Sync worked?')
+        logger.info('Double Check: ' + sync_manager.sshCommand(dst_client, ['ls', '/tmp/']).replace('\n',' '))
+
+        # Remotely verify the file
+        logger.info('About to verify remote file')
+        if sync_manager.verifyFile(dst_client, package_file) \
+                != sync_manager.VERIFICATION_FULL:
+            logger.error('Remote file verification failed')
+        else:
+            logger.info('Remote file verification worked')
+
+        # Remove the temp local & remote file
+        import os
+        os.remove(local_file_name)
+
+        if sync_manager.delete_file(dst_client, package_file) \
+                != sync_manager.PACKAGE_ACTION_WORKED:
+            logger.error('Unable to delete remote file: {0}'.format(remote_file_name))
+        else:
+            logger.info('Deleted remote file: {0}'.format(remote_file_name))
+        
+        if sync_manager.verifyFile(dst_client, package_file) \
+                != sync_manager.VERIFICATION_NONE:
+            logger.error('File still exists, remote rm did not work')
+        else:
+            logger.info("File doesn't exist, all good")
+
+        # Print Results
+        self.dump_log(self.log_file.format(test_name))
+
 if __name__ == '__main__':
     """
     Run through all test_*'s we have created
@@ -373,6 +387,6 @@ if __name__ == '__main__':
     tester.test_DBManager()
     tester.test_JobManager()
     tester.test_JobQueueManager()
-    tester.test_SyncManager()
     tester.test_ClientManager()
     tester.test_FilePackageManager()
+    tester.test_SyncManager()

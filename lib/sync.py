@@ -1,6 +1,5 @@
 import os
 import sys
-import shlex
 import subprocess
 from client import ClientManager
 from filepackage import FilePackageManager
@@ -82,11 +81,10 @@ class SyncManager():
 
         return self.shellOut(command)
 
-    def rsyncFile(self, src_client, dst_client, rel_file_path):
+    def rsyncFile(self, src_client, dst_client, package_file):
         """
         Supports sending a file from a [local|remote] host
         to its respective [remote|local] destination
-
         This assumes that [src|dst]_file is the fully qualified file path
         """
 
@@ -112,9 +110,9 @@ class SyncManager():
 
         # Extend the rsync command with the port of the remote user
         if (src_client.hostname and src_client.port):
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(src_client.port)))
+            command.append('--rsh="ssh -p {0}"'.format(src_client.port))
         elif (dst_client.hostname and dst_client.port):
-            command.extend(shlex.split("--rsh='ssh -p {0}'".format(dst_client.port)))
+            command.append('--rsh="ssh -p {0}"'.format(dst_client.port))
         else:
             self.logger.debug("Assuming port for 22 for rsync call")
 
@@ -137,11 +135,11 @@ class SyncManager():
 
             return location
 
-
         for client in [src_client, dst_client]:
-            command.append(build_rsync_location(client, rel_file_path))
+            command.append(build_rsync_location(client, package_file.relative_path))
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
+        print(command)
 
         return self.shellOut(command)
 
@@ -209,7 +207,7 @@ class SyncManager():
         bad_transfers = []
 
         for package_file in file_package.file_list:
-            if not transfer_file(src_client, dst_client, package_file):
+            if transfer_file(src_client, dst_client, package_file) != self.PACKAGE_ACTION_WORKED:
                 bad_transfers.append(package_file)
 
         if verifyPackage(dst_client, file_package):
@@ -226,13 +224,22 @@ class SyncManager():
         Takes a file and rsyncs from src->dst (after verifying action needs to be taken)
         """
 
-        if self.verifyFile(dst_client, package_file):
+        if self.verifyFile(dst_client, package_file) == self.VERIFICATION_FULL:
             self.logger.debug('File already exists, skipping transfer')
             return self.PACKAGE_ACTION_WORKED
 
-        rsyncResult = rsyncFile(src_client, dst_client, package_file)
+        try:
+            rsyncResult = self.rsyncFile(src_client, dst_client, package_file)
+        except subprocess.CalledProcessError as e:
+            print("Error Code: {0}".format(e.returncode))
+            print("Error Cmd: " + ' '.join(e.cmd))
+            print("Error Output: {0}".format(e.output))
+            import sys
+            import os
+            os.system('rsync --progress --verbose --compress --rsh="ssh -p 9999" /tmp/test.txt media@olympus.dalmura.com.au:/tmp/test.txt; echo $?')
+            sys.exit(1)
 
-        if self.verifyFile(dst_client, package_file):
+        if self.verifyFile(dst_client, package_file) == self.VERIFICATION_FULL:
             return self.PACKAGE_ACTION_WORKED
         else:
             self.logger.error('Failed to transfer file {0} from {1} to {2}'.format(
@@ -265,7 +272,7 @@ class SyncManager():
         Deletes a file off the target client
         """
 
-        if not self.verifyFile(client, package_file) == self.VERIFICATION_FULL:
+        if self.verifyFile(client, package_file) != self.VERIFICATION_FULL:
             self.logger.error('File package is missing or corrupt')
 
         full_path = client.base_path + package_file.relative_path
@@ -275,7 +282,7 @@ class SyncManager():
         except subprocess.CalledProcessError:
             self.logger.error('Something went wrong during the remote rm process')
 
-        if self.verifyFile(client, package_file):
+        if self.verifyFile(client, package_file) == self.VERIFICATION_FULL:
             self.logger.error('File package {0} failed to delete off {1}'.format(
                             package_file, client))
             return self.PACKAGE_ACTION_FAILED
@@ -334,11 +341,12 @@ class SyncManager():
                             package_file
                             , client
                         ))
+            return self.VERIFICATION_NONE
 
         remote_hash = sshOutput.rstrip().split(' ')[0]
 
         if package_file.file_hash == remote_hash:
-            self.logger.debug('Remote file hash matches for {0}'.format(package_file))
+            self.logger.debug('File hash matches for {0}'.format(package_file))
             return self.VERIFICATION_FULL
         else:
             self.logger.error('File hash mismatch for file {0} on client {1}'.format(

@@ -51,6 +51,10 @@ class ClientManager():
             """
             Returns a pretty string representing the client
             """
+
+            if not self.hostname:
+                return 'localhost'
+
             string = ''
 
             if self.username:
