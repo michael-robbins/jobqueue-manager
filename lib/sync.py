@@ -110,9 +110,9 @@ class SyncManager():
 
         # Extend the rsync command with the port of the remote user
         if (src_client.hostname and src_client.port):
-            command.append('--rsh="ssh -p {0}"'.format(src_client.port))
+            command.append('--rsh=ssh -p {0}'.format(src_client.port))
         elif (dst_client.hostname and dst_client.port):
-            command.append('--rsh="ssh -p {0}"'.format(dst_client.port))
+            command.append('--rsh=ssh -p {0}'.format(dst_client.port))
         else:
             self.logger.debug("Assuming port for 22 for rsync call")
 
@@ -139,7 +139,6 @@ class SyncManager():
             command.append(build_rsync_location(client, package_file.relative_path))
 
         self.logger.debug("RSYNC COMMAND: {0}".format(" ".join(command)))
-        print(command)
 
         return self.shellOut(command)
 
@@ -231,13 +230,7 @@ class SyncManager():
         try:
             rsyncResult = self.rsyncFile(src_client, dst_client, package_file)
         except subprocess.CalledProcessError as e:
-            print("Error Code: {0}".format(e.returncode))
-            print("Error Cmd: " + ' '.join(e.cmd))
-            print("Error Output: {0}".format(e.output))
-            import sys
-            import os
-            os.system('rsync --progress --verbose --compress --rsh="ssh -p 9999" /tmp/test.txt media@olympus.dalmura.com.au:/tmp/test.txt; echo $?')
-            sys.exit(1)
+            self.logger.error('Rsync failed to send the file properly')
 
         if self.verifyFile(dst_client, package_file) == self.VERIFICATION_FULL:
             return self.PACKAGE_ACTION_WORKED
