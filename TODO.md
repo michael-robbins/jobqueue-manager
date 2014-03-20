@@ -2,10 +2,10 @@ Short Term:
 * Redo the Tests to be more 'assert' and less 'just run the functions'
 * Getting Ubuntu start-stop daemon working with files
 * Remove the required SQL overrides and just have all Managers inherit everything
-* Review the Job object and ensure its inline with how I did Client and FilePackage
-* Add discover packages to the action types
+* Review the Job object and ensure its inline with how I did the Client/FilePackage/Config objects
 * Add in the ability to stop the live daemon through either the start-stop daemon or a DB queue kill message
 * Give clients max_{upload,download} bandwidth options 
+* Add test for FilePackage discovery
 
 Long Term:
 * Turn the test.py into unit tests

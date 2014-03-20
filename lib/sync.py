@@ -191,9 +191,8 @@ class SyncManager():
                 self.logger.error('Package deletion failed')
                 return self.PACKAGE_ACTION_FAILED
 
-        if action_id == 3: # Reindex
-            # This is not implemented yet
-            return self.PACKAGE_ACTION_FAILED
+        if action_id == 3: # Reindex (discoverPackages)
+            return discoverFilePackage(dst_client, package_id) == self.PACKAGE_ACTION_WORKED:
 
     def transferPackage(self, src_client, dst_client, file_package, cursor=None):
         """
@@ -364,7 +363,7 @@ class SyncManager():
         for filepackage_id in filepackage_ids:
             file_package = self.filepackage_manager.getFilePackage(filepackage_id)
 
-            result_code, result_data = self.verifyPackage(client, file_package)
+            result_code = self.verifyPackage(client, file_package)
 
             if result_code == self.VERIFICATION_FULL:
                 client.associateFilePackage(filepackage_id, self.VERIFICATION_FULL)
@@ -389,6 +388,16 @@ class SyncManager():
                             , full_verify
                             , part_verify
                             , none_verify))
+
+        if (full_verify + part_verify) == len(filepackage_ids):
+            self.logger.info('We fully/partially verified all requested packages')
+            return self.PACKAGE_ACTION_WORKED
+        elif full_verify > 0:
+            self.logger.warning('We verified some packages')
+            return self.PACKAGE_ACTION_WORKED
+        else:
+            self.logger.error('There were requested packages that failed to verify')
+            return self.PACKAGE_ACTION_FAILED
 
 if __name__ == '__main__':
     from tester import TestManager
