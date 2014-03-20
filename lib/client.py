@@ -15,12 +15,7 @@ class ClientManager():
 
         self.logger = logger
 
-        self._required_sql = [
-                'get_client_packages'
-                , 'get_client_for_sync'
-            ]
-
-        self.SQL = db_manager.get_sql_cmds(self._required_sql)
+        self.SQL = db_manager.get_sql_cmds()
 
     class Client():
         """

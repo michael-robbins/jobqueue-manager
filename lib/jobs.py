@@ -40,19 +40,9 @@ class JobManager():
                 except IndexError:
                     setattr(self, key, '')
 
-            self.syncer = self.SyncManager(db_manager, logger)
-
-            self._required_sql = [
-                    'get_job'
-                    , 'get_archived_job'
-                    , 'start_job'
-                    , 'finish_job'
-                    , 'archive_job'
-                    , 'delete_job'
-                ]
-
+            self.sync_manager = self.SyncManager(db_manager, logger)
             self.db_manager = db_manager
-            self.SQL = db_manager.get_sql_cmds(self._required_sql) # Get implementation specific SQL
+            self.SQL = db_manager.get_sql_cmds() # Get implementation specific SQL
 
 
         def __str__(self):
@@ -88,7 +78,7 @@ class JobManager():
             """
 
             self.report_started() # We do this here as we are within the forked context
-            result = self.syncer.handle_package(
+            result = self.sync_manager.handle_package(
                             self.package_id
                             , self.src_client_id
                             , self.dst_client_id

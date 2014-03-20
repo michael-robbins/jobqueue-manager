@@ -20,7 +20,7 @@ class DBManager():
             else:
                 self.logger.error('You are missing the following config option: {0}'.format(opt))
 
-    def get_sql_cmds(list_of_cmds):
+    def get_sql_cmds():
         """
         return dict() of generic SQL commands
         """
@@ -84,7 +84,7 @@ class DBManager():
                 client_id = ?
         """
 
-        return { i: SQL[i] for i in SQL if i in list_of_cmds }
+        return SQL
 
 
 class Postgres_DBManager(DBManager):
@@ -116,12 +116,12 @@ class Postgres_DBManager(DBManager):
             return None
         return None
     
-    def get_sql_cmds(self, list_of_cmds):
+    def get_sql_cmds(self):
         """
         return dict() of PostgreSQL specific commands
         """
 
-        SQL = DBManager.get_sql_cmds(list_of_cmds)
+        SQL = DBManager.get_sql_cmds()
 
         # Provide any PostgreSQL specific command overrides here
         # SQL['foo'] = 'SELECT * FROM bar'
@@ -160,7 +160,7 @@ class Postgres_DBManager(DBManager):
                     )
             """
 
-        return { i: SQL[i] for i in SQL if i in list_of_cmds }
+        return SQL
 
 
 class SQLite3_DBManager(DBManager):
@@ -187,12 +187,12 @@ class SQLite3_DBManager(DBManager):
         conn.isolation_level = None
         return conn.cursor()
 
-    def get_sql_cmds(self, list_of_cmds):
+    def get_sql_cmds(self):
         """
         Return dict() of SQLite3 specific commands
         """
 
-        SQL = DBManager.get_sql_cmds(list_of_cmds)
+        SQL = DBManager.get_sql_cmds()
 
         # Provide any specific overrides below for SQLite3
         # SQL['foo'] = 'SELECT * FROM bar'
@@ -228,7 +228,7 @@ class SQLite3_DBManager(DBManager):
                             job_id = ?
             """
 
-        return { i: SQL[i] for i in SQL if i in list_of_cmds }
+        return SQL
 
 
 if __name__ == '__main__':

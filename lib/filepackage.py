@@ -17,18 +17,7 @@ class FilePackageManager():
 
             self.logger = logger
 
-            self._required_sql = [
-                    'get_file_for_sync'
-                    , 'get_package_for_sync'
-                    , 'get_package_parent'
-                    , 'get_package_children'
-                    , 'get_file_packages'
-                    , 'get_package_folder'
-                    , 'get_package_files'
-                    , 'get_package_ids'
-                ]
-
-            self.SQL = db_manager.get_sql_cmds(self._required_sql)
+            self.SQL = db_manager.get_sql_cmds()
 
 
         class FilePackage(object):

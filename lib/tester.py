@@ -125,7 +125,7 @@ class TestManager():
         cursor = db_manager.get_cursor()
 
         if cursor:
-            SQL = db_manager.get_sql_cmds(['all_jobs'])
+            SQL = db_manager.get_sql_cmds()
             cursor.execute(SQL['all_jobs'])
             for i,job in enumerate(cursor.fetchall()):
                 logger.info("Job {0}: {1}".format(i,job))
