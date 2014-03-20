@@ -318,6 +318,7 @@ class TestManager():
         from sync import SyncManager
         sync_manager = SyncManager(db_manager, logger)
 
+        # Testing
         # Test a local SSH command
         try:
             logger.info('Attempting local SSH call')
@@ -334,13 +335,8 @@ class TestManager():
         except subprocess.CalledProcessError:
             logger.error('Unable to perform remote ls')
 
-        # Generate our temporary file
-        class File(object):
-            self.relative_path = ''
-            self.file_hash = ''
-            def __str__(self): return self.relative_path
-
-        package_file = File()
+        # Create an empty file and add the test file
+        package_file = filepackage_manager.getEmptyFile()
         package_file.relative_path = 'test.txt'
 
         local_file_name    = src_client.base_path + package_file.relative_path

@@ -53,7 +53,7 @@ class FilePackageManager():
                 * file_hash
                 """
                 
-                def __init__(self, file_id, required_sql, cursor):
+                def __init__(self, file_id, required_sql, cursor=None):
                     """
                     Takes the file_id and configures the required attributes
                     """
@@ -61,13 +61,18 @@ class FilePackageManager():
                     self.file_id = file_id
                     self.SQL     = required_sql
 
-                    cursor.execute(self.SQL['get_file_for_sync'], str(file_id))
+                    if cursor:
+                        cursor.execute(self.SQL['get_file_for_sync'], str(file_id))
 
-                    (
-                        self.package_id
-                        , self.relative_path
-                        , self.file_hash
-                    ) = cursor.fetchone()
+                        (
+                            self.package_id
+                            , self.relative_path
+                            , self.file_hash
+                        ) = cursor.fetchone()
+                    else:
+                        self.package_id = 0
+                        self.relative_path = ''
+                        self.file_hash = ''
 
                 def __str__(self):
                     """
@@ -161,6 +166,12 @@ class FilePackageManager():
                 filepackage_ids.append(i[0])
 
             return filepackage_ids
+
+        def getEmptyFile(self):
+            """
+            Returns an empty file (mainly used for testing)
+            """
+            return FilePackage.File(0, dict())
 
 
 if __name__ == '__main__':
