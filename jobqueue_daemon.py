@@ -5,8 +5,8 @@ import argparse
 
 sys.path.append('lib/')
 
-from manager import JobQueueManager
-
+from jobqueue import JobQueueManager
+from config  import ConfigManager
 
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'
@@ -29,8 +29,10 @@ def main():
 
     options = parser.parse_args()
 
+    config = ConfigManager(options.config_file).get_config()
+
     manager = JobQueueManager(
-            options.config_file
+            config
             , options.verbose
             , options.daemon
     )

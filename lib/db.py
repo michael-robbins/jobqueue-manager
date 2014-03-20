@@ -9,13 +9,14 @@ class DBManager():
     def __init__(self, config, required_opts, logger):
         """
         Set up the connection string details
+        We're only given the 'DB' section of the config_file to deal with
         """
 
         self.logger = logger
 
         for opt in required_opts:
-            if opt in config:
-                setattr(self, opt, config[opt])
+            if opt in dir(config):
+                setattr(self, opt, getattr(config, opt))
             else:
                 self.logger.error('You are missing the following config option: {0}'.format(opt))
 

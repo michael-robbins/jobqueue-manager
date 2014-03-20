@@ -17,19 +17,19 @@ class JobQueueManager():
     Handles the monitoring of the JobQueue and runs jobs
     """
 
-    def __init__(self, config_file, verbose, daemon_mode=True):
+    def __init__(self, config, verbose, daemon_mode=True):
         """
         Parse config file and setup the logging
         """
         
-        self.config  = ConfigManager(config_file).get_config()
+        self.config  = config
         self.verbose = verbose
         self.daemon_mode = daemon_mode
 
-        self.logger = Logger(self.config['DAEMON']['log_name']
-                    , self.config['DAEMON']['log_file']).get_logger()
+        self.logger = Logger(self.config.DAEMON.log_name
+                    , self.config.DAEMON.log_file).get_logger()
 
-        self.pidfile = self.config['DAEMON']['pid_file']
+        self.pidfile = self.config.DAEMON.pid_file
 
 
     def daemonize(self):
@@ -48,8 +48,8 @@ class JobQueueManager():
             raise Exception(e)
 
         # Escape out of where we started
-        os.chdir(self.config['DAEMON']['working_dir'])
-        os.umask(self.config['DAEMON']['umask'])
+        os.chdir(self.config.DAEMON.working_dir)
+        os.umask(self.config.DAEMON.umask)
         os.setsid()
 
         # Perform second fork
@@ -97,15 +97,14 @@ class JobQueueManager():
         Main worker loop
         """
 
-        if self.config['MANAGER']['db_type'] == 'psql':
-            db_manager = db.Postgres_DBManager(self.config['MANAGER'], self.logger)
-        elif self.config['MANAGER']['db_type'] == 'sqlite3':
-            db_manager = db.SQLite3_DBManager(self.config['MANAGER'], self.logger)
+        if self.config.DB.db_type == 'psql':
+            db_manager = db.Postgres_DBManager(self.config.DB, self.logger)
+        elif self.config.DB.db_type == 'sqlite3':
+            db_manager = db.SQLite3_DBManager(self.config.DB, self.logger)
         else:
             db_manager = None
             self.logger.error('Unsupport db_type in the config file')
-            assert db_manager
-
+            sys.exit(1)
 
         job_manager = JobManager(db_manager, self.logger)
         
@@ -123,7 +122,7 @@ class JobQueueManager():
             if oneshot:
                 break
 
-            sleep_time = float(self.config['DAEMON']['sleep'])
+            sleep_time = float(self.config.DAEMON.sleep)
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
@@ -163,7 +162,7 @@ class JobQueueManager():
             self.logger.debug('We are now a daemon, congrats')
         else:
             print('INFO: Skipping daemon mode')
-            print('INFO: Log file: ' + self.config['DAEMON']['log_file'])
+            print('INFO: Log file: ' + self.config.DAEMON.log_file)
 
         # Work our magic
         self.run(oneshot)

@@ -80,6 +80,30 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
+    def test_ConfigManager(self):
+        """
+        Test the Config Manager
+        """
+        # Setup
+        test_name = 'manager_ConfigManager'
+        logger = self.get_test_logger(test_name)
+
+        from config import ConfigManager
+        config_manager = ConfigManager(self.config_file)
+
+        # Testing
+        config = config_manager.get_config()
+        
+        required_sections = [ 'DAEMON', 'DB' ]
+        for section in required_sections:
+            assert getattr(config, section)
+            logger.info('Found section {0}'.format(section))
+        
+        logger.info(dir(config))
+
+        # Print Results
+        self.dump_log(self.log_file.format(test_name))
+
     def test_DBManager(self):
         """
         Test the DB Manager
@@ -92,7 +116,7 @@ class TestManager():
         config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+        db_manager = SQLite3_DBManager(config.DB, logger)
 
         self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
@@ -123,7 +147,7 @@ class TestManager():
         config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+        db_manager = SQLite3_DBManager(config.DB, logger)
 
         self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
@@ -180,7 +204,7 @@ class TestManager():
         config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+        db_manager = SQLite3_DBManager(config.DB, logger)
 
         self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
@@ -216,7 +240,7 @@ class TestManager():
         config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+        db_manager = SQLite3_DBManager(config.DB, logger)
 
         self.reset_db_schema(self.db_schema, self.db_extra, logger)
 
@@ -271,7 +295,7 @@ class TestManager():
         config = ConfigManager(self.config_file).get_config()
 
         from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config['MANAGER'], logger)
+        db_manager = SQLite3_DBManager(config.DB, logger)
 
         self.reset_db_schema(self.db_schema, self.db_extra, logger)
         
@@ -384,6 +408,7 @@ if __name__ == '__main__':
 
     # Run through the test cases we have so far
     tester.test_Logger()
+    tester.test_ConfigManager()
     tester.test_DBManager()
     tester.test_JobManager()
     tester.test_JobQueueManager()
