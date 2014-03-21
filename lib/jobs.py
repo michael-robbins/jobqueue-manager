@@ -1,19 +1,21 @@
+from sync import SyncManager
+
 class JobManager():
     """
     Used to manage jobs and extract info from the JobManager database
     """
 
     class Job():
+        """
+        Holds the details for a specific Job
+        """
 
-        from sync import SyncManager
-
-        def __init__(self, db_manager, config_tuple, logger=None):
+        def __init__(self, db_manager, sync_manager, config_tuple, logger=None):
             """
             Setup the object by setattr'ing the fields into attributes
             Setup the DB side of things
             Setup the SyncManager
             """
-            
             self.tuple_mapping = [
                     'job_id'
                     , 'package_id'
@@ -44,22 +46,18 @@ class JobManager():
             self.db_manager = db_manager
             self.SQL = db_manager.get_sql_cmds() # Get implementation specific SQL
 
-
         def __str__(self):
             """
             Return object as a good looking string ;)
             """
-
             return " ".join(
                     [ "{0}='{1}'".format(key,getattr(self,key)) for key in self.tuple_mapping ]
                 )
-
 
         def reload_job(self, archived=False):
             """
             Reloads the job (get latest datetime fields)
             """
-
             cursor = self.db_manager.get_cursor()
             if archived:
                 row = cursor.execute(self.SQL['get_archived_job'], self.job_id).fetchone()
@@ -68,7 +66,6 @@ class JobManager():
 
             self.__init__(self.db_manager, row)
 
-
         def execute(self):
             """
             Execute Job (this function should be forked correctly from manager):
@@ -76,7 +73,6 @@ class JobManager():
             * Run SyncManager over the job
             * Return what SyncManager reports
             """
-
             self.report_started() # We do this here as we are within the forked context
             result = self.sync_manager.handle_package(
                             self.package_id
@@ -90,23 +86,19 @@ class JobManager():
             else:
                 self.report_failed()
 
-
         def report_started(self):
             """
             Reports back that we have started the job
             """
-
             import os
             cursor = self.db_manager.get_cursor()
             cursor.execute( self.SQL['start_job'], (os.getpid(), self.job_id) )
             self.reload_job()
 
-
         def report_complete(self):
             """
             Reports back that we have finished the job
             """
-
             cursor = self.db_manager.get_cursor()
             cursor.execute( self.SQL['finish_job'], self.job_id )
             cursor.execute( self.SQL['archive_job'], ('Complete', self.job_id) )
@@ -118,30 +110,23 @@ class JobManager():
             """
             Reports back that we have failed the job
             """
-
             cursor = self.db_manager.get_cursor()
             cursor.execute( self.SQL['finish_job'], self.job_id )
             cursor.execute( self.SQL['archive_job'], ('Failed', self.job_id) )
             cursor.execute( self.SQL['delete_job'], self.job_id )
             self.reload_job(archived=True)
 
-
     def __init__(self, db_manager, logger):
         """
         Sets up the DB and the logger
         """
 
-        self._required_sql = [ 'all_jobs', 'next_job', 'get_job' ]
+        self.sync_manager = SyncManager(db_manager, logger)
 
         self.logger = logger
 
-        self.db_manager = db_manager
-        self.SQL = db_manager.get_sql_cmds(self._required_sql) # Get implementation specific SQL
-
-        for opt in self._required_sql:
-            if opt not in self.SQL:
-                self.logger.error('You are missing the following SQL command: {0}'.format(opt))
-
+        self.db_manager   = db_manager
+        self.SQL = db_manager.get_sql_cmds() # Get implementation specific SQL
 
     def is_alive(self):
         """
@@ -157,38 +142,34 @@ class JobManager():
         # For the time being, we will leave this as 'always on'
         return True
 
-
     def get_jobs(self):
         """
         Returns a list of all available Jobs
         """
-
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['all_jobs'])
-        return [ self.Job(self.db_manager, i, self.logger) for i in cursor.fetchall() if i ]
-
+        return [ self.Job(
+                    self.db_manager
+                    , self.sync_manager, i, self.logger
+                    ) for i in cursor.fetchall() ]
 
     def get_job(self, job_id):
         """
         Returns a Job of the given job_id
         """
-
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['get_job'], job_id )
         row = cursor.fetchone()
-        return self.Job(self.db_manager, row, self.logger) if row else None
-
+        return self.Job(self.db_manager, self.sync_manager, row, self.logger) if row else None
 
     def get_next_job(self):
         """
         Returns the next Job in the queue
         """
-
         cursor = self.db_manager.get_cursor()
         cursor.execute(self.SQL['next_job'])
         row = cursor.fetchone()
         return self.Job(self.db_manager, row, self.logger) if row else None
-
 
 if __name__ == '__main__':
     """
