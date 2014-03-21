@@ -148,6 +148,12 @@ class JobManager():
         Tells the daemon to keep going or not
         """
 
+        # Conditions to return False:
+        # * Check for local file existence
+        # * Get it to Trap a SIGKIL and cleanly shutdown
+        # * Check for entry in DB
+        # * Look into other ways that daemons are shut down correctly from the cmd line
+
         # For the time being, we will leave this as 'always on'
         return True
 
