@@ -53,6 +53,8 @@ CREATE TABLE clients (
     , port INTEGER NOT NULL
     , username VARCHAR(32) NOT NULL
     , base_path VARCHAR(256) NOT NULL DEFAULT '/'
+    , max_download INTEGER NOT NULL DEFAULT 0
+    , max_upload INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE media_packages (
@@ -141,7 +143,8 @@ INSERT INTO media_package_types VALUES (DEFAULT, 'TV Base');   -- 2
 INSERT INTO media_package_types VALUES (DEFAULT, 'TV Season'); -- 3
 
 -- Data tables, required for link tables
-INSERT INTO clients VALUES (
+INSERT INTO clients (client_id, client_type_id, name, hostname, base_path)
+VALUES (
     DEFAULT
     , 1
     , 'Media Server'
@@ -151,7 +154,8 @@ INSERT INTO clients VALUES (
     , '/data/media/'
 ); -- 1
 
-INSERT INTO clients VALUES (
+INSERT INTO clients (client_id, client_type_id, name, hostname, base_path)
+VALUES (
     DEFAULT
     , 2
     , 'Media Player'

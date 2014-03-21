@@ -59,6 +59,8 @@ CREATE TABLE clients (
     , port INTEGER NOT NULL
     , username TEXT NOT NULL
     , base_path TEXT NOT NULL DEFAULT '/'
+    , max_download INTEGER NOT NULL DEFAULT 0
+    , max_upload INTEGER NOT NULL DEFAULT 0
     , FOREIGN KEY(client_type_id) REFERENCES client_types(client_type_id) ON DELETE RESTRICT
 );
 
