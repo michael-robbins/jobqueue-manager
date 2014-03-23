@@ -3,6 +3,7 @@ import sys
 import subprocess
 from client import ClientManager
 from filepackage import FilePackageManager
+from jobs import JobMananger
 
 class SyncManager():
     """
@@ -30,9 +31,10 @@ class SyncManager():
         """
         Setup the DB interactions and logger
         """
-        self.logger     = logger
-        self.db_manager = db_manager
+        self.logger      = logger
+        self.db_manager  = db_manager
 
+        self.job_manager = JobManager(db_manager, logger)
         self.filepackage_manager = FilePackageManager(db_manager, logger)
         self.client_manager      = ClientManager(db_manager, logger)
 
@@ -115,6 +117,23 @@ class SyncManager():
             command.append('--rsh=ssh -p {0}'.format(dst_client.port))
         else:
             self.logger.debug("Assuming port for 22 for rsync call")
+
+        # Extend the rsync command with the bwlimit
+        if src_client.max_upload:
+            if dst_client.max_download:
+                if src_client.max_upload > dst_client.max_download:
+                    max_sync = dst_client.max_download
+                else:
+                    max_sync = src_client.max_upload
+            else:
+                max_sync = src_client.max_upload
+        else:
+            max_sync = None
+
+        # We get the number of current jobs and divide the max_sync by that
+        if max_sync:
+            num_jobs = len(self.job_manager.get_jobs())
+            command.append('--bwlimit={0}'.format(max_sync/num_jobs))
 
         # We now have the base part of the command done
         # we process the source and then destination parts

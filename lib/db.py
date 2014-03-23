@@ -63,6 +63,8 @@ class DBManager():
                 , port
                 , username
                 , base_path
+                , max_download
+                , max_upload
             FROM
                 clients
             WHERE

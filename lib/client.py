@@ -40,6 +40,8 @@ class ClientManager():
                 , self.port
                 , self.username
                 , self.base_path
+                , self.max_download
+                , self.max_upload
             ) = cursor.fetchone()
 
         def __str__(self):

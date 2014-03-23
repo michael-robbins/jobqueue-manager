@@ -392,6 +392,11 @@ class TestManager():
         else:
             logger.info("File doesn't exist, all good")
 
+        # Test fileDiscovery
+        # 1. Update the test schema with new file package
+        # 2. Create the test file package
+        # 3. Test a verify over it
+
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
