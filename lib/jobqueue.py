@@ -1,4 +1,3 @@
-
 # System imports
 import os
 import sys
@@ -10,7 +9,6 @@ import db
 from logger import Logger
 from jobs   import JobManager
 from config import ConfigManager
-
 
 class JobQueueManager():
     """
@@ -30,7 +28,6 @@ class JobQueueManager():
                     , self.config.DAEMON.log_file).get_logger()
 
         self.pidfile = self.config.DAEMON.pid_file
-
 
     def daemonize(self):
         """
@@ -82,7 +79,6 @@ class JobQueueManager():
             f.write(pid + '\n')
         self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid,self.pidfile))
 
-
     def on_exit(self):
         """
         Delete the PID file
@@ -90,7 +86,6 @@ class JobQueueManager():
 
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
-
 
     def run(self, oneshot=False):
         """
@@ -133,7 +128,6 @@ class JobQueueManager():
             self.logger.error('We exited the while loop but are supposedly still alive')
             return False
 
-
     def start(self, oneshot=False):
         """
         Start the daemon
@@ -170,15 +164,29 @@ class JobQueueManager():
         # Finishing up properly
         self.logger.info('Finished successfully, bye bye!')
 
-
     def stop(self):
         """
         Stop the daemon
         """
-        # Figure out how to stop a live daemon running
-        # Load PID file, kill process?
-        # Inject kill command into DB queue?
+        # Check for a pidfile to see if the daemon already runs
+        try:
+            with open(self.pidfile,'r') as pf:
+                pid = int(pf.read().strip())
+        except IOError:
+            if not os.path.isdir(os.path.dirname(self.pidfile)):
+                print('ERROR: PID folder does not exist: {0}'.format(os.path.dirname(self.pidfile)))
+                sys.exit(1)
+            pid = None
 
+        if not pid:
+            message="pidfile {0} does not exist. " + \
+                    "Daemon not running?"
+            self.logger.error(message.format(pidfile))
+            sys.exit(1)
+        
+        # Figure out how to stop a live daemon running
+        # Kill the pid?
+        # Inject kill command into DB queue?
 
 if __name__ == '__main__':
     from tester import TestManager

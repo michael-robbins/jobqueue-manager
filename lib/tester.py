@@ -1,19 +1,21 @@
+import os, sys
+
 class TestManager():
     """
     My dodgy method of testing before I integrate Unit Tests :)
     """
 
-    config_file = '/home/michael/Development/Projects/jobqueue_manager/test.conf'
     db_file     = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
     db_schema   = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
-    db_extra    = '/home/michael/Development/Projects/jobqueue_manager/test.sqlite3.sql'
     log_file    = '/tmp/{0}.log'
+
+    config_file = '/home/michael/Development/Projects/jobqueue_manager/test.conf'
+    db_extra    = '/home/michael/Development/Projects/jobqueue_manager/test.sqlite3.sql'
 
     def get_test_logger(self, log_name):
         """
         Returnsa test logger
         """
-        import os
         from logger import Logger
 
         log_file = '/tmp/{0}.log'.format(log_name)
@@ -27,7 +29,6 @@ class TestManager():
         """
         Resets the SQLite3 DB back to default
         """
-        import os
 
         os.system('cat ' + db_schema + ' | sqlite3 ' + self.db_file) # Schema file
         os.system('cat ' + db_extra  + ' | sqlite3 ' + self.db_file) # Test data
@@ -49,6 +50,29 @@ class TestManager():
                 logger.error('Unable to write test file: {0}'.format(file_name))
             return False
         return True
+
+    def deleteTestFileLocal(local_file):
+        os.remove(local_file)
+
+    def deleteTestFileRemote(sync_manager, client, package_file, logger):
+        logger.info('About to verify remote file')
+        if sync_manager.verifyFile(client, package_file) \
+                != sync_manager.VERIFICATION_FULL:
+            logger.error('Remote file verification failed')
+        else:
+            logger.info('Remote file verification worked')
+
+        if sync_manager.delete_file(client, package_file) \
+                != sync_manager.PACKAGE_ACTION_WORKED:
+            logger.error('Unable to delete remote file: {0}'.format(package_file))
+        else:
+            logger.info('Deleted remote file: {0}'.format(package_file))
+        
+        if sync_manager.verifyFile(dst_client, package_file) \
+                != sync_manager.VERIFICATION_NONE:
+            logger.error('File still exists, remote rm did not work')
+        else:
+            logger.info("File doesn't exist, all good")
 
     def dump_log(self, log_file):
         """
@@ -368,33 +392,10 @@ class TestManager():
             logger.info('Sync worked?')
         logger.info('Double Check: ' + sync_manager.sshCommand(dst_client, ['ls', '/tmp/']).replace('\n',' '))
 
-        # Remotely verify the file
-        logger.info('About to verify remote file')
-        if sync_manager.verifyFile(dst_client, package_file) \
-                != sync_manager.VERIFICATION_FULL:
-            logger.error('Remote file verification failed')
-        else:
-            logger.info('Remote file verification worked')
-
-        # Remove the temp local & remote file
-        import os
-        os.remove(local_file_name)
-
-        if sync_manager.delete_file(dst_client, package_file) \
-                != sync_manager.PACKAGE_ACTION_WORKED:
-            logger.error('Unable to delete remote file: {0}'.format(remote_file_name))
-        else:
-            logger.info('Deleted remote file: {0}'.format(remote_file_name))
-        
-        if sync_manager.verifyFile(dst_client, package_file) \
-                != sync_manager.VERIFICATION_NONE:
-            logger.error('File still exists, remote rm did not work')
-        else:
-            logger.info("File doesn't exist, all good")
 
         # Test fileDiscovery
         # 1. Update the test schema with new file package
-        # 2. Create the test file package
+        # 2. Create the test file packague
         # 3. Test a verify over it
 
         # Print Results

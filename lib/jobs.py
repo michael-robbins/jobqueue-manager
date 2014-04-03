@@ -5,6 +5,8 @@ class JobManager():
     Used to manage jobs and extract info from the JobManager database
     """
 
+    is_alive = True
+
     class Job():
         """
         Holds the details for a specific Job
@@ -34,7 +36,6 @@ class JobManager():
                 self.archived = True
             else:
                 self.archived = False
-
 
             for (i,key) in enumerate(self.tuple_mapping):
                 try:
@@ -139,8 +140,14 @@ class JobManager():
         # * Check for entry in DB
         # * Look into other ways that daemons are shut down correctly from the cmd line
 
-        # For the time being, we will leave this as 'always on'
-        return True
+        return self.is_alive
+
+    def stop_on_next_iteration(self):
+        """
+        Makes is_alive return false, but doesn't attempt to kill any jobs
+        We just wait for them to finish up
+        """
+        self.is_alive = False
 
     def get_jobs(self):
         """
