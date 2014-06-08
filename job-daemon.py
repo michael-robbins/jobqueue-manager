@@ -3,10 +3,8 @@
 import sys
 import argparse
 
-sys.path.append('lib/')
-
-from jobqueue import JobQueueManager
-from config  import ConfigManager
+from lib.jobqueue import JobQueueManager
+from lib.config  import ConfigManager
 
 parser = argparse.ArgumentParser(
         description='Daemon for the Media Server Job Processor'
@@ -27,17 +25,11 @@ def main():
     Parse the command-line options and configure the Job Queuer for use!
     """
 
-    options = parser.parse_args()
+    args = parser.parse_args()
+    conf = ConfigManager(args.config_file).get_config()
+    mngr = JobQueueManager(config=conf, verbose=args.verbose, daemon=args.daemon)
 
-    config = ConfigManager(options.config_file).get_config()
-
-    manager = JobQueueManager(
-            config
-            , options.verbose
-            , options.daemon
-    )
-
-    return manager.start()
+    return mngr.start()
 
 if __name__ == '__main__':
     main()

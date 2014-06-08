@@ -29,11 +29,11 @@ DESC=JobQueueManager
 ## Edit user configuation in /etc/default/jobqueuemanager to change
 ##
 ## JQM_USER=        #$RUN_AS, username to run JobQueueManager under, the default is jqm
-## JQM_HOME=        #$APP_PATH, the location of jobqueue_daemon.py, the default is /opt/jobqueuemananger
-## JQM_DATA=        #$DATA_DIR, the location of jqm.db, cache, logs, the default is /opt/jobqueuemanager
-## JQM_PIDFILE=     #$PID_FILE, the location of jqm.pid, the default is /var/run/jobqueuemananger/jqm.pid
-## PYTHON_BIN=      #$DAEMON, the location of the python binary, the default is /usr/bin/python
-## JQM_OPTS=        #$EXTRA_DAEMON_OPTS, extra cli option for jobqueuemanager, i.e. " --config=/home/jqm/config.ini"
+## JQM_HOME=        #$APP_PATH, the location of jobqueue_daemon.py, the default is /opt/jqm
+## JQM_DATA=        #$DATA_DIR, the location of jqm.db, cache, logs, the default is /opt/jqm
+## JQM_PIDFILE=     #$PID_FILE, the location of jqm.pid, the default is /run/jqm.pid
+## PYTHON_BIN=      #$DAEMON, the location of the python binary, the default is /usr/bin/python3
+## JQM_OPTS=        #$EXTRA_DAEMON_OPTS, extra cli option for jobqueuemanager, i.e. " --config=${JQM_HOME}/config.ini"
 ## SSD_OPTS=        #$EXTRA_SSD_OPTS, extra start-stop-daemon option like " --group=users"
 ##
 ## EXAMPLE if want to run as different user
@@ -45,18 +45,18 @@ DESC=JobQueueManager
 RUN_AS=${JQM_USER-jqm}
 
 # Path to app JQM_HOME=path/to/app/jobqueue_daemon.py
-APP_PATH=${JQM_HOME-/opt/jobqueuemananger}
+APP_PATH=${JQM_HOME-/opt/jqm}
 
 # Data directory where jqm.db, cache and logs are stored
-DATA_DIR=${JQM_DATA-/opt/jobqueuemanager}
+DATA_DIR=${JQM_DATA-/opt/jqm}
 
 # Path to store PID file
-PID_FILE=${JQM_PIDFILE-/var/run/jobqueuemanager/jqm.pid}
+PID_FILE=${JQM_PIDFILE-/run/jqm.pid}
 
 # path to python bin
-DAEMON=${PYTHON_BIN-/usr/bin/python}
+DAEMON=${PYTHON_BIN-/usr/bin/python3}
 
-# Extra daemon option like: JQM_OPTS=" --config=/home/jqm/config.ini"
+# Extra daemon option like: JQM_OPTS=" --config=${JQM_HOME}/config.ini"
 EXTRA_DAEMON_OPTS=${JQM_OPTS-}
 
 # Extra start-stop-daemon option like START_OPTS=" --group=users"
@@ -64,8 +64,7 @@ EXTRA_SSD_OPTS=${SSD_OPTS-}
 ##
 
 PID_PATH=`dirname $PID_FILE`
-DAEMON_OPTS=" jobqueue_daemon.py -q --daemon --pidfile=${PID_FILE} --datadir=${DATA_DIR} ${EXTRA_DAEMON_OPTS}"
-
+DAEMON_OPTS=" job-daemon.py -q --daemon --pidfile=${PID_FILE} --datadir=${DATA_DIR} ${EXTRA_DAEMON_OPTS}"
 ##
 
 test -x $DAEMON || exit 0

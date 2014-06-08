@@ -2,4 +2,4 @@
 Jobqueue Manager
 ================
 
-Manages the Media Servers Frontend Requests
+Takes care of the Frontend requests

@@ -128,77 +128,6 @@ class TestManager():
         # Print Results
         self.dump_log(self.log_file.format(test_name))
 
-    def test_DBManager(self):
-        """
-        Test the DB Manager
-        """
-        # Setup
-        test_name = 'manager_DBManager'
-        logger = self.get_test_logger(test_name)
-
-        from config import ConfigManager
-        config = ConfigManager(self.config_file).get_config()
-
-        from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config.DB, logger)
-
-        self.reset_db_schema(self.db_schema, self.db_extra, logger)
-
-        # Testing
-        logger.debug('Opened connection and reset schema')
-        cursor = db_manager.get_cursor()
-
-        if cursor:
-            SQL = db_manager.get_sql_cmds()
-            cursor.execute(SQL['all_jobs'])
-            for i,job in enumerate(cursor.fetchall()):
-                logger.info("Job {0}: {1}".format(i,job))
-        else:
-            logger.error("Unable to open cursor")
-
-        # Print Results
-        self.dump_log(self.log_file.format(test_name))
-
-    def test_JobManager(self):
-        """
-        Test the Job Manager
-        """
-        # Setup
-        test_name = 'manager_JobManager'
-        logger = self.get_test_logger(test_name)
-
-        from config import ConfigManager
-        config = ConfigManager(self.config_file).get_config()
-
-        from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config.DB, logger)
-
-        self.reset_db_schema(self.db_schema, self.db_extra, logger)
-
-        from jobs import JobManager
-        job_manager = JobManager(db_manager, logger)
-
-        # Testing
-        if job_manager.is_alive():
-            job = job_manager.get_next_job()
-
-            if job:
-                logger.info('Before:'    + str(job))
-                job.report_started()
-                logger.info('Started: '  + str(job))
-                job.report_complete()
-                logger.info('Complete: ' + str(job))
-
-            job = job_manager.get_next_job()
-
-            if job:
-                logger.info('Next: ' + str(job))
-            else:
-                logger.info('No more jobs!')
-
-        # Print Results
-        self.dump_log(self.log_file.format(test_name))
-
     def test_JobQueueManager(self):
         """
         Test the Job Queue Manager
@@ -212,42 +141,6 @@ class TestManager():
 
         # Testing
         jqm.start(oneshot=True)
-
-        # Print Results
-        self.dump_log(self.log_file.format(test_name))
-
-    def test_ClientManager(self):
-        """
-        Test the Client Manager
-        """
-        # Setup
-        test_name = 'manager_ClientManager'
-        logger = self.get_test_logger(test_name)
-
-        from config import ConfigManager
-        config = ConfigManager(self.config_file).get_config()
-
-        from db import SQLite3_DBManager
-        db_manager = SQLite3_DBManager(config.DB, logger)
-
-        self.reset_db_schema(self.db_schema, self.db_extra, logger)
-
-        from client import ClientManager
-        client_manager = ClientManager(db_manager, logger)
-
-        # Testing
-        client_id = 1
-        client = client_manager.getClient(client_id, db_manager.get_cursor())
-
-        if not client:
-            logger.info('Error obtaining client')
-
-        attributes = [ 'hostname', 'port', 'username', 'base_path' ]
-        answers    = [ 'atlas', '22', 'test', '/data/media/' ]
-
-        for attribute, answer in zip(attributes, answers):
-            logger.info("{0}='{1}'".format(attribute,getattr(client, attribute)))
-            assert str(getattr(client, attribute)) == answer
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
