@@ -3,10 +3,12 @@ class ConfigManager():
     Parses the JobQueue Manager config file returning a Config() object
     """
 
-    DAEMON = 'DAEMON';
+    DAEMON = 'DAEMON'
+    API = 'API'
 
     default_config = {
         DAEMON : ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask', 'sleep']
+        , API  : ['host', 'key']
         }
 
     class Config():

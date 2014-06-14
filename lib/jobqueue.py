@@ -5,10 +5,10 @@ import time
 import atexit
 
 # Program imports
-import db
 from logger import Logger
-from jobs   import JobManager
 from config import ConfigManager
+from sync   import SyncManager
+from api    import ApiManager
 
 class JobQueueManager():
     """
@@ -19,7 +19,7 @@ class JobQueueManager():
         """
         Parse config file and setup the logging
         """
-        
+
         self.config  = config
         self.verbose = verbose
         self.daemon_mode = daemon_mode
@@ -28,6 +28,9 @@ class JobQueueManager():
                     , self.config.DAEMON.log_file).get_logger()
 
         self.pidfile = self.config.DAEMON.pid_file
+
+        api_manager  = ApiManager(self.config.API, self.logger)
+        sync_manager = SyncManager(api_manager, self.logger)
 
     def daemonize(self):
         """
@@ -92,41 +95,27 @@ class JobQueueManager():
         Main worker loop
         """
 
-        if self.config.DB.db_type == 'psql':
-            db_manager = db.Postgres_DBManager(self.config.DB, self.logger)
-        elif self.config.DB.db_type == 'sqlite3':
-            db_manager = db.SQLite3_DBManager(self.config.DB, self.logger)
-        else:
-            db_manager = None
-            self.logger.error('Unsupport db_type in the config file')
-            sys.exit(1)
-
-        job_manager = JobManager(db_manager, self.logger)
-        
-        while job_manager.is_alive():
+        while True:
             # Figure out how to thow the job off to a separate thread here...
             # Another fork? Or perhaps a threading class
-            job = job_manager.get_next_job()
+            job_queue = self.api_manager.get('jobs')
 
-            if job:
-                self.logger.info('Starting job {0}'.format(job.job_id))
-                job.execute()
+            if not job_queue:
+                self.logger.info('Job queue is empty')
             else:
-                self.logger.info('Job queue is empty.')
-            
+                for job in job_queue:
+                    self.logger.info('Starting job {0}'.format(job.job_id))
+                    self.sync_manager.handle(job)
+
             if oneshot:
+                self.logger.warning('Breaking out of job loop due to oneshot')
                 break
 
             sleep_time = float(self.config.DAEMON.sleep)
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
-        if not job_manager.is_alive():
-            self.logger.info('job_manager.isalive() is false, exiting')
-            return True
-        else:
-            self.logger.error('We exited the while loop but are supposedly still alive')
-            return False
+        self.logger.error('Exiting run()')
 
     def start(self, oneshot=False):
         """
@@ -151,9 +140,9 @@ class JobQueueManager():
         
         # Turn into a daemon if we are told to
         if self.daemon_mode:
-            print('INFO: We are about to turn into a daemon, no more stdout!')
+            print('INFO: We are about to turn into a daemon, no more stdout')
             self.daemonize()
-            self.logger.debug('We are now a daemon, congrats')
+            self.logger.debug('We are now a daemon, all stdout/stderr redirected')
         else:
             print('INFO: Skipping daemon mode')
             print('INFO: Log file: ' + self.config.DAEMON.log_file)

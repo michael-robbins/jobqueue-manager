@@ -1,9 +1,6 @@
 import os
 import sys
 import subprocess
-from client import ClientManager
-from filepackage import FilePackageManager
-from jobs import JobMananger
 
 class SyncManager():
     """
@@ -33,10 +30,6 @@ class SyncManager():
         """
         self.logger      = logger
         self.db_manager  = db_manager
-
-        self.job_manager = JobManager(db_manager, logger)
-        self.filepackage_manager = FilePackageManager(db_manager, logger)
-        self.client_manager      = ClientManager(db_manager, logger)
 
     def shellOut(self, command):
         """
