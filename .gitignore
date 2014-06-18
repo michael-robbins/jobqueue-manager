@@ -36,3 +36,4 @@ nosetests.xml
 *.db
 test.conf
 test.sqlite3.sql
+.idea/
