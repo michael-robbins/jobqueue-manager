@@ -1,5 +1,6 @@
 import logging
 
+
 class Logger():
     """
     Has the following levels (in increasing importance):
@@ -20,8 +21,8 @@ class Logger():
         fh = logging.FileHandler(log_destination)
         fh.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('timestamp="%(asctime)s" name="%(name)s" ' + \
-                'level="%(levelname)s" message="%(message)s"')
+        formatter = logging.Formatter('timestamp="%(asctime)s" name="%(name)s" ' +
+                                      'level="%(levelname)s" message="%(message)s"')
 
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)

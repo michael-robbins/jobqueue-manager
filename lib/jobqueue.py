@@ -7,30 +7,31 @@ import atexit
 # Program imports
 from logger import Logger
 from config import ConfigManager
-from sync   import SyncManager
-from api    import ApiManager
+from sync import SyncManager
+from api import ApiManager
+
 
 class JobQueueManager():
     """
     Handles the monitoring of the JobQueue and runs jobs
     """
 
-    def __init__(self, config, verbose, daemon_mode=True):
+    def __init__(self, config, verbose, daemon=True):
         """
         Parse config file and setup the logging
         """
 
-        self.config  = config
+        self.config = config
         self.verbose = verbose
-        self.daemon_mode = daemon_mode
+        self.daemon = daemon
 
-        self.logger = Logger(self.config.DAEMON.log_name
-                    , self.config.DAEMON.log_file).get_logger()
+        self.logger = Logger(self.config.DAEMON.log_name,
+                             self.config.DAEMON.log_file).get_logger()
 
         self.pidfile = self.config.DAEMON.pid_file
 
-        api_manager  = ApiManager(self.config.API, self.logger)
-        sync_manager = SyncManager(api_manager, self.logger)
+        self.api_manager = ApiManager(self.config.API, self.logger)
+        self.sync_manager = SyncManager(self.api_manager, self.logger)
 
     def daemonize(self):
         """
@@ -41,7 +42,7 @@ class JobQueueManager():
         try:
             pid = os.fork()
             if pid > 0:
-                os._exit(0)
+                os.exit(0)
             self.logger.debug('First fork worked')
         except OSError as e:
             self.logger.error('First fork failed ({0})'.format(e))
@@ -56,7 +57,7 @@ class JobQueueManager():
         try:
             pid = os.fork()
             if pid > 0:
-                os._exit(0)
+                os.exit(0)
         except OSError as e:
             self.logger.error('Second fork failed ({0})'.format(e))
             raise Exception(e)
@@ -78,9 +79,9 @@ class JobQueueManager():
 
         # Write the PID to file
         pid = str(os.getpid())
-        with open(self.pidfile,'w+') as f:
+        with open(self.pidfile, 'w+') as f:
             f.write(pid + '\n')
-        self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid,self.pidfile))
+        self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid, self.pidfile))
 
     def on_exit(self):
         """
@@ -90,7 +91,7 @@ class JobQueueManager():
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
-    def run(self, oneshot=False):
+    def run(self, one_shot=False):
         """
         Main worker loop
         """
@@ -98,17 +99,23 @@ class JobQueueManager():
         while True:
             # Figure out how to thow the job off to a separate thread here...
             # Another fork? Or perhaps a threading class
-            job_queue = self.api_manager.get('jobs')
+            job_queue = self.api_manager.get(self.api_manager.endpoints.JOBS)
 
             if not job_queue:
                 self.logger.info('Job queue is empty')
             else:
                 for job in job_queue:
-                    self.logger.info('Starting job {0}'.format(job.job_id))
-                    self.sync_manager.handle(job)
+                    if not self.sync_manager.working_on(job):
+                        message = 'Starting job {0}'.format(job.job_id)
+                        self.logger.info(message)
+                        self.sync_manager.handle(job)
+                    else:
+                        message = 'Already working on {0}'.format(job.job_id)
+                        self.logger.info(message)
 
-            if oneshot:
-                self.logger.warning('Breaking out of job loop due to oneshot')
+            if one_shot:
+                message = 'Breaking out of job loop due to one_shot'
+                self.logger.warning(message)
                 break
 
             sleep_time = float(self.config.DAEMON.sleep)
@@ -117,13 +124,13 @@ class JobQueueManager():
 
         self.logger.error('Exiting run()')
 
-    def start(self, oneshot=False):
+    def start(self, one_shot=False):
         """
         Start the daemon
         """
         # Check for a pidfile to see if the daemon already runs
         try:
-            with open(self.pidfile,'r') as pf:
+            with open(self.pidfile, 'r') as pf:
                 pid = int(pf.read().strip())
         except IOError:
             if not os.path.isdir(os.path.dirname(self.pidfile)):
@@ -139,16 +146,16 @@ class JobQueueManager():
             sys.exit(1)
         
         # Turn into a daemon if we are told to
-        if self.daemon_mode:
-            print('INFO: We are about to turn into a daemon, no more stdout')
+        if self.daemon:
             self.daemonize()
-            self.logger.debug('We are now a daemon, all stdout/stderr redirected')
+            message = 'We are now a daemon, all stdout/stderr redirected'
+            self.logger.debug(message)
         else:
             print('INFO: Skipping daemon mode')
             print('INFO: Log file: ' + self.config.DAEMON.log_file)
 
         # Work our magic
-        self.run(oneshot)
+        self.run(one_shot)
 
         # Finishing up properly
         self.logger.info('Finished successfully, bye bye!')
@@ -159,18 +166,18 @@ class JobQueueManager():
         """
         # Check for a pidfile to see if the daemon already runs
         try:
-            with open(self.pidfile,'r') as pf:
+            with open(self.pidfile, 'r') as pf:
                 pid = int(pf.read().strip())
         except IOError:
             if not os.path.isdir(os.path.dirname(self.pidfile)):
-                print('ERROR: PID folder does not exist: {0}'.format(os.path.dirname(self.pidfile)))
+                message = 'ERROR: PID folder does not exist: {0}'.format(os.path.dirname(self.pidfile))
+                print(message)
                 sys.exit(1)
             pid = None
 
         if not pid:
-            message="pidfile {0} does not exist. " + \
-                    "Daemon not running?"
-            self.logger.error(message.format(pidfile))
+            message = "pidfile {0} does not exist. Daemon not running?"
+            self.logger.error(message.format(self.pidfile))
             sys.exit(1)
         
         # Figure out how to stop a live daemon running

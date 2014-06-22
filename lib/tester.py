@@ -1,20 +1,22 @@
-import os, sys
+import os
+
 
 class TestManager():
     """
     My dodgy method of testing before I integrate Unit Tests :)
     """
 
-    db_file     = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
-    db_schema   = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
-    log_file    = '/tmp/{0}.log'
+    db_file = '/home/michael/Development/Projects/jobqueue_manager/manager.db'
+    db_schema = '/home/michael/Development/Projects/jobqueue_manager/schema.sqlite3.sql'
+    log_file = '/tmp/{0}.log'
 
     config_file = '/home/michael/Development/Projects/jobqueue_manager/test.conf'
-    db_extra    = '/home/michael/Development/Projects/jobqueue_manager/test.sqlite3.sql'
+    db_extra = '/home/michael/Development/Projects/jobqueue_manager/test.sqlite3.sql'
 
-    def get_test_logger(self, log_name):
+    @staticmethod
+    def get_test_logger(log_name):
         """
-        Returnsa test logger
+        Returns a test logger
         """
         from logger import Logger
 
@@ -140,7 +142,7 @@ class TestManager():
         jqm = JobQueueManager(self.config_file, False, False)
 
         # Testing
-        jqm.start(oneshot=True)
+        jqm.start(one_shot=True)
 
         # Print Results
         self.dump_log(self.log_file.format(test_name))
