@@ -1,3 +1,7 @@
+import sys
+import configparser
+
+
 class ConfigManager():
     """
     Parses the JobQueue Manager config file returning a Config() object
@@ -25,30 +29,27 @@ class ConfigManager():
         def __init__(self):
             pass
 
-    def bail_with(self, message):
+    @staticmethod
+    def bail_with(message):
         """
         Print the bail message and... bail!
         """
-        
-        print(message)
 
-        from sys import exit
-        exit(1)
+        print(message)
+        sys.exit(1)
 
     def __init__(self, config_file):
         """
         Parse config file and build a Config object
         """
 
-        import configparser
         config_parser = configparser.ConfigParser()
-       
         self.config = ConfigManager.Config()
 
         try:
             with open(config_file, 'r') as f:
                 config_parser.read(config_file)
-        except IOError as e:
+        except IOError:
             message = "ERROR: Something is wrong with the config file: {0}".format(config_file)
             self.bail_with(message)
 
@@ -78,6 +79,6 @@ class ConfigManager():
             return None
 
 if __name__ == '__main__':
-    from tester import TestManager
+    from .tester import TestManager
     tester = TestManager()
     tester.test_ConfigManager()

@@ -1,48 +1,42 @@
-# System imports
 import os
 import sys
 import time
 import atexit
 
 # Program imports
-from logger import Logger
-from config import ConfigManager
-from sync import SyncManager
-from api import ApiManager
+from lib.logger import Logger
+from lib.api import FrontendApiManager
+from lib.sync import SyncManager
 
 
 class JobQueueManager():
-    """
-    Handles the monitoring of the JobQueue and runs jobs
-    """
+    """ Handles the monitoring of the JobQueue and runs jobs """
 
     def __init__(self, config, verbose, daemon=True):
-        """
-        Parse config file and setup the logging
-        """
+        """ Parse config file and setup the logging """
 
         self.config = config
         self.verbose = verbose
         self.daemon = daemon
+
+        self.running = True
 
         self.logger = Logger(self.config.DAEMON.log_name,
                              self.config.DAEMON.log_file).get_logger()
 
         self.pidfile = self.config.DAEMON.pid_file
 
-        self.api_manager = ApiManager(self.config.API, self.logger)
-        self.sync_manager = SyncManager(self.api_manager, self.logger)
+        self.api_manager = FrontendApiManager(self.config.API, logger=self.logger)
+        self.sync_manager = SyncManager(logger=self.logger)
 
     def daemonize(self):
-        """
-        Turn this running process into a deamon
-        """
-
+        """ Turn this running process into a deamon """
         # Perform first fork
         try:
             pid = os.fork()
             if pid > 0:
-                os.exit(0)
+                self.logger.error('First fork returned but was >0, exiting')
+                sys.exit(1)
             self.logger.debug('First fork worked')
         except OSError as e:
             self.logger.error('First fork failed ({0})'.format(e))
@@ -57,7 +51,8 @@ class JobQueueManager():
         try:
             pid = os.fork()
             if pid > 0:
-                os.exit(0)
+                self.logger.error('Second fork returned but was >0, exiting')
+                sys.exit(1)
         except OSError as e:
             self.logger.error('Second fork failed ({0})'.format(e))
             raise Exception(e)
@@ -81,53 +76,53 @@ class JobQueueManager():
         pid = str(os.getpid())
         with open(self.pidfile, 'w+') as f:
             f.write(pid + '\n')
-        self.logger.debug('Written PID of ({0}) into file ({1})'.format(pid, self.pidfile))
+        self.logger.debug("Written PID of '{0}' into file '{1}'".format(pid, self.pidfile))
 
     def on_exit(self):
-        """
-        Delete the PID file
-        """
-
+        """ Delete the PID file """
         os.remove(self.pidfile)
         self.logger.debug('Removed the pid file ({0})'.format(self.pidfile))
 
-    def run(self, one_shot=False):
-        """
-        Main worker loop
-        """
+    def run(self):
+        """ Main worker loop """
+        while self.running:
+            # Loop over the job queue and handle any jobs that we are not processing yet
+            for job in self.api_manager.get_job_queue():
+                message = 'About to process job {0}'.format(job['name'])
+                self.logger.debug(message)
 
-        while True:
-            # Figure out how to thow the job off to a separate thread here...
-            # Another fork? Or perhaps a threading class
-            job_queue = self.api_manager.get(self.api_manager.endpoints.JOBS)
+                try:
+                    self.sync_manager.handle(job)
+                    message = 'Starting job {0}'.format(job['name'])
+                    self.logger.info(message)
+                except self.sync_manager.AlreadyWorkingOnException:
+                    message = 'Already working on job {0}'.format(job['name'])
+                    self.logger.debug(message)
+                except self.sync_manager.ActionAlreadyWorkingOnException:
+                    message = 'Job\'s ({0}) action ({1}) is already being worked on'.format(job['name'], job['action'])
+                    self.logger.debug(message)
 
-            if not job_queue:
-                self.logger.info('Job queue is empty')
-            else:
-                for job in job_queue:
-                    if not self.sync_manager.working_on(job):
-                        message = 'Starting job {0}'.format(job.job_id)
-                        self.logger.info(message)
-                        self.sync_manager.handle(job)
-                    else:
-                        message = 'Already working on {0}'.format(job.job_id)
-                        self.logger.info(message)
+            # Go over all queued jobs and complete any finished ones, report on what jobs we finished off
+            for job in self.sync_manager.complete_jobs():
+                message = 'Removed finished job {0}'.format(job['name'])
+                self.logger.info(message)
 
-            if one_shot:
-                message = 'Breaking out of job loop due to one_shot'
-                self.logger.warning(message)
-                break
-
+            # Sleep for a set time before checking the queue again
             sleep_time = float(self.config.DAEMON.sleep)
             self.logger.debug('Sleeping for {0}'.format(sleep_time))
             time.sleep(sleep_time)
 
-        self.logger.error('Exiting run()')
+        if not self.running:
+            # Good-ish place to be in
+            self.logger.warning('Main loop was stopped (running = False)')
+        else:
+            # Bad place to be in
+            self.logger.warning('Main loop broke without us saying (running = True)')
 
-    def start(self, one_shot=False):
-        """
-        Start the daemon
-        """
+        return True
+
+    def start(self):
+        """ Start the daemon """
         # Check for a pidfile to see if the daemon already runs
         try:
             with open(self.pidfile, 'r') as pf:
@@ -138,10 +133,9 @@ class JobQueueManager():
                 sys.exit(1)
             pid = None
 
-        # pidfile exists, bail
         if pid:
-            message = "pidfile {0} already exists. " + \
-                      "Daemon already running?\n"
+            # pidfile exists, bail
+            message = 'pidfile {0} already exists. Daemon already running?'
             self.logger.error(message.format(self.pidfile))
             sys.exit(1)
         
@@ -152,39 +146,48 @@ class JobQueueManager():
             self.logger.debug(message)
         else:
             print('INFO: Skipping daemon mode')
-            print('INFO: Log file: ' + self.config.DAEMON.log_file)
+            print('INFO: Log file: {0}'.format(self.config.DAEMON.log_file))
 
         # Work our magic
-        self.run(one_shot)
+        self.run()
 
         # Finishing up properly
         self.logger.info('Finished successfully, bye bye!')
+        return True
 
     def stop(self):
-        """
-        Stop the daemon
-        """
+        """ Stop the daemon, kill off all jobs """
         # Check for a pidfile to see if the daemon already runs
         try:
             with open(self.pidfile, 'r') as pf:
                 pid = int(pf.read().strip())
         except IOError:
             if not os.path.isdir(os.path.dirname(self.pidfile)):
-                message = 'ERROR: PID folder does not exist: {0}'.format(os.path.dirname(self.pidfile))
-                print(message)
+                message = 'ERROR: PID folder does not exist: {0}'
+                print(message.format(os.path.dirname(self.pidfile)))
                 sys.exit(1)
             pid = None
 
         if not pid:
-            message = "pidfile {0} does not exist. Daemon not running?"
+            message = 'pidfile {0} does not exist. Daemon not running?'
             self.logger.error(message.format(self.pidfile))
             sys.exit(1)
-        
-        # Figure out how to stop a live daemon running
-        # Kill the pid?
-        # Inject kill command into DB queue?
+
+        # Go over all queued jobs and close off any finished ones, report on the number we finished off
+        for job in self.sync_manager.complete_jobs():
+            self.logger.info('Removed finished job {0}'.format(job))
+
+        # Go over all currently running jobs, report on them and then kill them.
+        for process in self.sync_manager.processing_queue:
+            self.logger.info('Still processing job {0}'.format(process.name))
+
+            # We now kill off the process, upon restart the job should restart again
+            self.logger.warning('Killing job {0}'.format(process.name))
+            process.terminate()
+
+        self.running = False
 
 if __name__ == '__main__':
-    from tester import TestManager
+    from .tester import TestManager
     tester = TestManager()
     tester.test_JobQueueManager()
