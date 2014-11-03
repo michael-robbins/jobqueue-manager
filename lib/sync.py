@@ -1,7 +1,6 @@
 import os
 import subprocess
-
-from multiprocessing import Process
+import multiprocessing
 
 
 class SyncManager():
@@ -27,9 +26,10 @@ class SyncManager():
     REMOTE_PROG_LS = 'ls'
     REMOTE_PROG_RM = 'rm'
 
-    def __init__(self, logger=None):
+    def __init__(self, api_manager, logger):
         """ Setup the API interactions and logger """
 
+        self.api_manager = api_manager
         self.logger = logger
         self.job_queue = list()
         self.processing_queue = list()
@@ -45,7 +45,6 @@ class SyncManager():
     @staticmethod
     def shell_out(command):
         """ Generic method to shell out to the OS """
-
         process = subprocess.check_output(command, stderr=subprocess.PIPE, universal_newlines=True)
         return process
 
@@ -54,7 +53,6 @@ class SyncManager():
         Executes an SSH command to the remote host and returns the SSH output
         Assumes SSH Keys are setup and password-less auth works
         """
-
         # If the cmd isn't iterable we bail
         if not hasattr(cmd, '__iter__'):
             self.logger.error("Command given must be iterable")
@@ -159,7 +157,6 @@ class SyncManager():
 
     def handle_packages(self, packages, src_client, dst_client, action):
         """ Wrapper around handle_package allowing multiple packages to be worked on """
-
         results = []
         self.logger.debug('Working on multiple packages')
 
@@ -167,60 +164,51 @@ class SyncManager():
             # Build up a list of (package, result) tuples
             results.append((package, self.handle_package(package, src_client, dst_client, action)))
 
-        return reults
+        return results
 
     def handle_package(self, package, src_client, dst_client, action):
         """ Transfers a package between clients (or deletes/etc depending on action) """
+        self.logger.debug("{0}'ing package {1} from {2} to {3}".format(action, package['name'], src_client['name'],
+                                                                       dst_client['name']))
 
-        self.logger.debug("{0}'ing package {1} from {2} to {3}".format(action, package['name'], src_client['name'], dst_client['name']))
+        outcome = None
 
-        if action == 'sync':  # Sync
-            if self.verify_package(src_client, package) != self.VERIFICATION_FULL:
+        if action == 'sync':
+            if self.verify_package(src_client, package) == self.VERIFICATION_FULL:
+                if self.verify_package(dst_client, package) != self.VERIFICATION_FULL:
+                    outcome = self.transfer_package(src_client, dst_client, package)
+                else:
+                    self.logger.error('Destination package exists already, returning that it worked')
+                    outcome = self.PACKAGE_ACTION_WORKED
+            else:
                 self.logger.error('Source package is incomplete or corrupt, bailing')
-                return self.PACKAGE_ACTION_FAILED
-            else:
-                self.logger.info('Source package is verified')
-
-            if self.verify_package(dst_client, package) == self.VERIFICATION_FULL:
-                self.logger.error('Destination package exists already, returning that it worked')
-                return self.PACKAGE_ACTION_WORKED
-            else:
-                self.logger.info('Destination is missing the package (or part of it)')
-
-            if self.transfer_package(src_client, dst_client, package) == self.PACKAGE_ACTION_WORKED:
-                self.logger.info('Completed package transfer')
-                return self.PACKAGE_ACTION_WORKED
-            else:
-                self.logger.error('Failed package verification')
-                return self.PACKAGE_ACTION_FAILED
+                outcome = self.PACKAGE_ACTION_FAILED
 
         if action == 'delete':  # Delete
-            if self.verify_package(dst_client, package) != self.VERIFICATION_FULL:
-                self.logger.error('Destination package is not complete, skipping')
-                return self.PACKAGE_ACTION_FAILED
-            else:
+            if self.verify_package(dst_client, package) == self.VERIFICATION_FULL:
                 self.logger.debug('Destination package is in a good condition to delete')
-
-            if self.delete_package(dst_client, package):
-                self.logger.info('Package deletion completed')
-                return self.PACKAGE_ACTION_WORKED
+                outcome = self.delete_package(dst_client, package)
             else:
-                self.logger.error('Package deletion failed')
-                return self.PACKAGE_ACTION_FAILED
+                self.logger.error('Destination package is not complete, skipping')
+                outcome = self.PACKAGE_ACTION_FAILED
 
-        if action == 'index':  # Index (discoverPackages)
-            return self.discover_package(dst_client, package) == self.PACKAGE_ACTION_WORKED
+        if action == 'index':  # Index (Ties the package to a client)
+            outcome = self.verify_package(dst_client, package)
+
+        if outcome == self.PACKAGE_ACTION_WORKED:
+            return self.api_manager.update_job('WORKED')
+        else:
+            return self.api_manager.update_job('FAILED')
 
     def transfer_package(self, src_client, dst_client, file_package):
         """ Wrapper around transfer_file """
-
         bad_transfers = []
 
         for package_file in file_package.file_list:
             if self.transfer_file(src_client, dst_client, package_file) != self.PACKAGE_ACTION_WORKED:
                 bad_transfers.append(package_file)
 
-        if self.verify_package(dst_client, file_package):
+        if self.verify_package(dst_client, file_package) == (self.VERIFICATION_FULL, list()):
             self.logger.info('Transfer of package worked')
             return self.PACKAGE_ACTION_WORKED
         else:
@@ -230,7 +218,6 @@ class SyncManager():
 
     def transfer_file(self, src_client, dst_client, package_file):
         """ Takes a file and rsyncs from src->dst (after verifying action needs to be taken) """
-
         if self.verify_file(dst_client, package_file) == self.VERIFICATION_FULL:
             self.logger.debug('File already exists, skipping transfer')
             return self.PACKAGE_ACTION_WORKED
@@ -249,7 +236,6 @@ class SyncManager():
 
     def delete_package(self, client, file_package):
         """ Takes a single package and deletes it off the client """
-
         bad_files = list()
 
         for package_file in file_package.file_list:
@@ -282,23 +268,34 @@ class SyncManager():
 
         return self.PACKAGE_ACTION_WORKED
 
-    def verify_package(self, client, file_package):
+    def verify_package(self, client, package):
         """
         Takes a single package and ensures it exists on the given client
+        Also updates the API in regards to the outcome
         """
 
-        bad_files = []
+        bad_files = set()
 
-        for package_file in file_package.file_list:
-            if self.verify_file(client, package_file) == self.VERIFICATION_NONE:
-                bad_files.append(package_file)
+        for package_file in package.file_list:
+            if self.verify_file(client, package_file) == self.VERIFICATION_FULL:
+                self.api_manager.associate_client_with_file(client['id'], package_file['id'], True)
+            else:
+                self.api_manager.associate_client_with_file(client['id'], package_file['id'], False)
+                bad_files.add(package_file)
 
         if bad_files:
-            if len(bad_files) >= len(file_package.file_list):
+            self.api_manager.associate_client_with_package(client['id'], package['id'], False)
+            if len(bad_files) > len(package.file_list):
+                message = 'More bad files ({0}) than files in package ({1})?'.format(len(bad_files),
+                                                                                     len(package.file_list))
+                self.logger.error(message)
+                return self.VERIFICATION_NONE
+            if len(bad_files) == len(package.file_list):
                 return self.VERIFICATION_NONE
             else:
                 return self.VERIFICATION_PARTIAL
         else:
+            self.api_manager.associate_client_with_package(client['id'], package['id'], True)
             return self.VERIFICATION_FULL
 
     def verify_file(self, client, package_file):
@@ -306,6 +303,7 @@ class SyncManager():
         Ensures that the given file:
         1. Exists on the client
         2. Matches the hash
+        3. Returns the result
         """
         full_path = client.base_path + package_file.relative_path
 
@@ -323,6 +321,7 @@ class SyncManager():
             self.logger.error('Unable to perform remote hash for file {0} on client {1}'.format(package_file, client))
             return self.VERIFICATION_NONE
 
+        # $> file_hash file.name.ext
         remote_hash = ssh_output.rstrip().split(' ')[0]
 
         if package_file.file_hash == remote_hash:
@@ -331,48 +330,6 @@ class SyncManager():
         else:
             self.logger.error('File hash mismatch for file {0} on client {1}'.format(package_file, client))
             return self.VERIFICATION_NONE
-
-    def discover_package(self, client, packages=list()):
-        """
-        Given a client and an (optional) list of file_package id's
-        We attempt to verify each package on the client
-        If a verify returns a self.VERIFICATION_FULL we then associate the package to that client
-        """
-
-        full_verify = 0
-        part_verify = 0
-        none_verify = 0
-
-        for package in packages:
-            result_code = self.verify_package(client, package)
-
-            if result_code == self.VERIFICATION_FULL:
-                client.associate_file_package(package, self.VERIFICATION_FULL)
-                self.logger.info('Associating package {0} with client {1}'.format(package, client))
-                full_verify += 1
-
-            elif result_code == self.VERIFICATION_PARTIAL:
-                client.associate_file_package(package, self.VERIFICATION_PARTIAL)
-                self.logger.info('Partially associating package {0} with client {1}'.format(package, client))
-                part_verify += 1
-
-            else:
-                self.logger.info('Not associating package {0} with client {1}'.format(package, client))
-                none_verify += 1
-
-        self.logger.info('Package discovery over')
-        self.logger.info('total={0} full={1} partial={2} none={3}'.format(len(packages), full_verify, part_verify,
-                                                                          none_verify))
-
-        if (full_verify + part_verify) == len(packages):
-            self.logger.info('We fully/partially verified all requested packages')
-            return self.PACKAGE_ACTION_WORKED
-        elif full_verify > 0:
-            self.logger.info('We fully verified some packages')
-            return self.PACKAGE_ACTION_WORKED
-        else:
-            self.logger.warning('We fully verified no packages')
-            return self.PACKAGE_ACTION_FAILED
 
     def handle(self, job):
         """ Queues the job internally """
@@ -385,7 +342,7 @@ class SyncManager():
                 raise self.ActionAlreadyWorkingOnException
 
         function_args = (job['package'], job['source_client'], job['destination_client'], job['action'])
-        p = Process(target=self.handle_package, args=function_args, name=job['name'])
+        p = multiprocessing.Process(target=self.handle_package, args=function_args, name=job['name'])
         p.start()
 
         self.processing_queue.append(p)
@@ -396,12 +353,15 @@ class SyncManager():
 
         for process in self.processing_queue:
             if not process.is_alive():
-                # Process has finished, if it failed, it will have been reported within the process.
+                # Process outcome will have been reported from within the process itself
                 # Join it to ensure it's finished and remove it from the processing queue
-                self.logger.debug("Joining process {0} to ensure it's dead".format(process))
-                process.join()
-                self.processing_queue.remove(process)
-                removed_processes.append(process.name)
+                self.logger.debug("Joining process {0} to ensure it's dead".format(process.name))
+                try:
+                    process.join(timeout=5)
+                    self.processing_queue.remove(process)
+                    removed_processes.append(process.name)
+                except multiprocessing.TimeoutError as e:
+                    self.logger.warn('Process isn\'t alive but didn\'t join in time...')
 
         # Report on the number of processed
         return removed_processes

@@ -27,7 +27,7 @@ class JobQueueManager():
         self.pidfile = self.config.DAEMON.pid_file
 
         self.api_manager = FrontendApiManager(self.config.API, logger=self.logger)
-        self.sync_manager = SyncManager(logger=self.logger)
+        self.sync_manager = SyncManager(self.api_manager, logger=self.logger)
 
     def daemonize(self):
         """ Turn this running process into a deamon """
@@ -88,24 +88,18 @@ class JobQueueManager():
         while self.running:
             # Loop over the job queue and handle any jobs that we are not processing yet
             for job in self.api_manager.get_job_queue():
-                message = 'About to process job {0}'.format(job['name'])
-                self.logger.debug(message)
-
                 try:
                     self.sync_manager.handle(job)
-                    message = 'Starting job {0}'.format(job['name'])
-                    self.logger.info(message)
+                    self.logger.info('Starting job {0}'.format(job['name']))
                 except self.sync_manager.AlreadyWorkingOnException:
-                    message = 'Already working on job {0}'.format(job['name'])
-                    self.logger.debug(message)
+                    self.logger.debug('Already working on job {0}'.format(job['name']))
                 except self.sync_manager.ActionAlreadyWorkingOnException:
-                    message = 'Job\'s ({0}) action ({1}) is already being worked on'.format(job['name'], job['action'])
-                    self.logger.debug(message)
+                    self.logger.debug("action='{0}' job='{1}' message='action already working on'".format(
+                        job['action'], job['name']))
 
             # Go over all queued jobs and complete any finished ones, report on what jobs we finished off
             for job in self.sync_manager.complete_jobs():
-                message = 'Removed finished job {0}'.format(job['name'])
-                self.logger.info(message)
+                self.logger.info('Removed finished job {0}'.format(job))
 
             # Sleep for a set time before checking the queue again
             sleep_time = float(self.config.DAEMON.sleep)
