@@ -4,7 +4,7 @@ import signal
 import argparse
 
 from lib.jobqueue import JobQueueManager
-from lib.config  import ConfigManager
+from lib.config import ConfigManager
 
 parser = argparse.ArgumentParser(
     description='Daemon for the Media Server Job Processor'
@@ -26,7 +26,7 @@ def main():
 
     manager = JobQueueManager(config=conf, verbose=args.verbose, daemon=args.daemon)
 
-    def stop_manager(signal, frame):
+    def stop_manager():
         """ Stop the manager on a CTRL+C """
         manager.stop()
 

@@ -11,7 +11,7 @@ class ConfigManager():
     API = 'API'
 
     default_config = {
-        DAEMON: ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask', 'sleep']
+        DAEMON: ['pid_file', 'log_name', 'log_dir', 'working_dir', 'umask', 'sleep']
         , API: ['host', 'token']
     }
 
@@ -77,8 +77,3 @@ class ConfigManager():
             return self.config
         else:
             return None
-
-if __name__ == '__main__':
-    from .tester import TestManager
-    tester = TestManager()
-    tester.test_ConfigManager()

@@ -1,3 +1,4 @@
+import os
 import logging
 
 
@@ -18,6 +19,14 @@ class Logger():
         self.logger = logging.getLogger(title)
         self.logger.setLevel(logging.DEBUG)
 
+        # If it's a relative path add it onto the scripts working directory
+        if log_destination.startswith('.'):
+            log_destination = os.path.join(os.path.dirname(os.path.realpath(__file__)), log_destination)
+
+        # os.path.normpath strips out the crap
+        log_destination = os.path.normpath(os.path.join(log_destination, '{0}.log'.format(title)))
+
+        self.logger.log_file = log_destination
         fh = logging.FileHandler(log_destination)
         fh.setLevel(logging.DEBUG)
 
@@ -32,9 +41,3 @@ class Logger():
 
     def get_logger(self):
         return self.logger
-
-if __name__ == '__main__':
-    from tester import TestManager
-    tester = TestManager()
-    tester.test_Logger()
-

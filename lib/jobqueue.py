@@ -22,7 +22,7 @@ class JobQueueManager():
         self.running = True
 
         self.logger = Logger(self.config.DAEMON.log_name,
-                             self.config.DAEMON.log_file).get_logger()
+                             self.config.DAEMON.log_dir).get_logger()
 
         self.pidfile = self.config.DAEMON.pid_file
 
@@ -145,7 +145,7 @@ class JobQueueManager():
             self.logger.debug(message)
         else:
             print('INFO: Skipping daemon mode')
-            print('INFO: Log file: {0}'.format(self.config.DAEMON.log_file))
+            print('INFO: Log file: {0}'.format(self.logger.log_file))
 
         # Work our magic
         self.run()
@@ -185,8 +185,3 @@ class JobQueueManager():
             process.terminate()
 
         self.running = False
-
-if __name__ == '__main__':
-    from .tester import TestManager
-    tester = TestManager()
-    tester.test_JobQueueManager()
