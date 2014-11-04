@@ -59,7 +59,7 @@ class SyncManager():
             return self.SSH_FAILED
 
         # Test if the client is local, if so shell out without building the ssh part
-        if not client.hostname and not client.port and not client.username:
+        if not client['host_hostname'] and not client['host_port'] and not client['host_username']:
             self.logger.debug("Client is local, just shelling out without ssh")
             self.logger.debug("LOCAL COMMAND: {0}".format(" ".join(cmd)))
             return self.shell_out(cmd)
@@ -67,13 +67,13 @@ class SyncManager():
         # Client is remote, build the SSH command
         command = ['ssh']
 
-        if client.port:
-            command.append('-p {0}'.format(client.port))
+        if client['host_port']:
+            command.append('-p {0}'.format(client['host_port']))
 
-        if client.username:
-            command.append(client.username + '@' + client.hostname)
+        if client['host_username']:
+            command.append(client['host_username'] + '@' + client['host_hostname'])
         else:
-            command.append(client.hostname)
+            command.append(client['host_hostname'])
 
         command.extend(cmd)
 
@@ -88,18 +88,18 @@ class SyncManager():
         """
 
         # Check that we don't have both as a 'remote' client
-        if src_client.hostname and dst_client.hostname:
+        if 'host_hostname' in src_client and 'host_hostname' in dst_client:
             self.logger.error('Cannot have both as remote hosts')
             return self.RSYNC_FAILED
 
         # Check to ensure at least one client is 'remote'
-        if not src_client.hostname and not dst_client.hostname:
+        if 'host_hostname' not in src_client and 'host_hostname' not in dst_client:
             self.logger.error('At least one client needs to be a remote client')
             return self.RSYNC_FAILED
 
         # Report if we are defaulting to the default user
-        if (src_client.hostname and not src_client.username) \
-                or (dst_client.hostname and not dst_client.username):
+        if ('host_hostname' in src_client and 'host_username' not in src_client) \
+                or ('host_hostname' in dst_client and 'host_username' not in dst_client):
             self.logger.debug("rsync user defaulting to the username '{0}'".format(os.getlogin()))
 
         # Build the rsync command
@@ -109,22 +109,22 @@ class SyncManager():
         command.extend(['--progress', '--verbose', '--compress'])
 
         # Extend the rsync command with the port of the remote user
-        if src_client.hostname and src_client.port:
-            command.append('--rsh=ssh -p {0}'.format(src_client.port))
-        elif dst_client.hostname and dst_client.port:
-            command.append('--rsh=ssh -p {0}'.format(dst_client.port))
+        if src_client['host_hostname'] and src_client['host_port']:
+            command.append('--rsh=ssh -p {0}'.format(src_client['host_port']))
+        elif dst_client['host_hostname'] and dst_client['host_port']:
+            command.append('--rsh=ssh -p {0}'.format(dst_client['host_port']))
         else:
             self.logger.debug('Assuming port for 22 for rsync call')
 
         # Extend the rsync command with the bandwidth limit (bwlimit)
-        if src_client.max_upload:
-            if dst_client.max_download:
-                if src_client.max_upload > dst_client.max_download:
-                    max_sync = dst_client.max_download
+        if src_client['max_upload']:
+            if dst_client['max_download']:
+                if src_client['max_upload'] > dst_client['max_download']:
+                    max_sync = dst_client['max_download']
                 else:
-                    max_sync = src_client.max_upload
+                    max_sync = src_client['max_upload']
             else:
-                max_sync = src_client.max_upload
+                max_sync = src_client['max_upload']
         else:
             max_sync = 0
 
@@ -138,42 +138,42 @@ class SyncManager():
             """ Takes a client and a file path """
             location = ''
 
-            if local_client.username:
-                location += local_client.username + '@'
+            if local_client['host_username']:
+                location += local_client['host_username'] + '@'
 
-            if local_client.hostname:
-                location += local_client.hostname + ':'
+            if local_client['host_hostname']:
+                location += local_client['host_hostname'] + ':'
 
-            location += local_client.base_path + file_path
+            location += local_client['base_path'] + file_path
 
             return location
 
         for client in [src_client, dst_client]:
-            command.append(build_rsync_location(client, package_file.relative_path))
+            command.append(build_rsync_location(client, package_file['relative_path']))
 
         self.logger.debug('RSYNC COMMAND: {0}'.format(' '.join(command)))
 
         return self.shell_out(command)
 
-    def handle_packages(self, packages, src_client, dst_client, action):
+    def handle_packages(self, job_id, packages, src_client, dst_client, action):
         """ Wrapper around handle_package allowing multiple packages to be worked on """
         results = []
         self.logger.debug('Working on multiple packages')
 
         for package in packages:
             # Build up a list of (package, result) tuples
-            results.append((package, self.handle_package(package, src_client, dst_client, action)))
+            results.append((package, self.handle_package(job_id, package, src_client, dst_client, action)))
 
         return results
 
-    def handle_package(self, package, src_client, dst_client, action):
+    def handle_package(self, job_id, package, src_client, dst_client, action):
         """ Transfers a package between clients (or deletes/etc depending on action) """
         self.logger.debug("{0}'ing package {1} from {2} to {3}".format(action, package['name'], src_client['name'],
                                                                        dst_client['name']))
-
+        self.api_manager.update_job_state(job_id, 'PROG')
         outcome = None
 
-        if action == 'sync':
+        if action == 'SYNC':
             if self.verify_package(src_client, package) == self.VERIFICATION_FULL:
                 if self.verify_package(dst_client, package) != self.VERIFICATION_FULL:
                     outcome = self.transfer_package(src_client, dst_client, package)
@@ -184,7 +184,7 @@ class SyncManager():
                 self.logger.error('Source package is incomplete or corrupt, bailing')
                 outcome = self.PACKAGE_ACTION_FAILED
 
-        if action == 'delete':  # Delete
+        elif action == 'DEL':
             if self.verify_package(dst_client, package) == self.VERIFICATION_FULL:
                 self.logger.debug('Destination package is in a good condition to delete')
                 outcome = self.delete_package(dst_client, package)
@@ -192,19 +192,19 @@ class SyncManager():
                 self.logger.error('Destination package is not complete, skipping')
                 outcome = self.PACKAGE_ACTION_FAILED
 
-        if action == 'index':  # Index (Ties the package to a client)
+        elif action == 'INDEX':
             outcome = self.verify_package(dst_client, package)
 
         if outcome == self.PACKAGE_ACTION_WORKED:
-            return self.api_manager.update_job('WORKED')
+            return self.api_manager.update_job_state(job_id, 'COMP')
         else:
-            return self.api_manager.update_job('FAILED')
+            return self.api_manager.update_job_state(job_id, 'FAIL')
 
     def transfer_package(self, src_client, dst_client, file_package):
         """ Wrapper around transfer_file """
         bad_transfers = []
 
-        for package_file in file_package.file_list:
+        for package_file in file_package['package_files']:
             if self.transfer_file(src_client, dst_client, package_file) != self.PACKAGE_ACTION_WORKED:
                 bad_transfers.append(package_file)
 
@@ -238,7 +238,7 @@ class SyncManager():
         """ Takes a single package and deletes it off the client """
         bad_files = list()
 
-        for package_file in file_package.file_list:
+        for package_file in file_package['package_files']:
             if self.delete_file(client, package_file) == self.PACKAGE_ACTION_FAILED:
                 bad_files.append(package_file)
 
@@ -255,7 +255,7 @@ class SyncManager():
         if self.verify_file(client, package_file) != self.VERIFICATION_FULL:
             self.logger.error('File package is missing or corrupt')
 
-        full_path = client.base_path + package_file.relative_path
+        full_path = client['base_path'] + package_file['relative_path']
 
         try:
             self.ssh_command(client, [self.REMOTE_PROG_RM, full_path])
@@ -274,23 +274,23 @@ class SyncManager():
         Also updates the API in regards to the outcome
         """
 
-        bad_files = set()
+        bad_files = list()
 
-        for package_file in package.file_list:
+        for package_file in package['package_files']:
             if self.verify_file(client, package_file) == self.VERIFICATION_FULL:
                 self.api_manager.associate_client_with_file(client['id'], package_file['id'], True)
             else:
                 self.api_manager.associate_client_with_file(client['id'], package_file['id'], False)
-                bad_files.add(package_file)
+                bad_files.append(package_file)
 
         if bad_files:
             self.api_manager.associate_client_with_package(client['id'], package['id'], False)
-            if len(bad_files) > len(package.file_list):
+            if len(bad_files) > len(package['package_files']):
                 message = 'More bad files ({0}) than files in package ({1})?'.format(len(bad_files),
-                                                                                     len(package.file_list))
+                                                                                     len(package['package_files']))
                 self.logger.error(message)
                 return self.VERIFICATION_NONE
-            if len(bad_files) == len(package.file_list):
+            if len(bad_files) == len(package['package_files']):
                 return self.VERIFICATION_NONE
             else:
                 return self.VERIFICATION_PARTIAL
@@ -305,7 +305,7 @@ class SyncManager():
         2. Matches the hash
         3. Returns the result
         """
-        full_path = client.base_path + package_file.relative_path
+        full_path = client['base_path'] + package_file['relative_path']
 
         # Verify the file exists at all
         try:
@@ -324,7 +324,7 @@ class SyncManager():
         # $> file_hash file.name.ext
         remote_hash = ssh_output.rstrip().split(' ')[0]
 
-        if package_file.file_hash == remote_hash:
+        if package_file['file_hash'] == remote_hash:
             self.logger.debug('File hash matches for {0}'.format(package_file))
             return self.VERIFICATION_FULL
         else:
@@ -341,7 +341,7 @@ class SyncManager():
             if job['action'] in process.name:
                 raise self.ActionAlreadyWorkingOnException
 
-        function_args = (job['package'], job['source_client'], job['destination_client'], job['action'])
+        function_args = (job['id'], job['package'], job['source_client'], job['destination_client'], job['action'])
         p = multiprocessing.Process(target=self.handle_package, args=function_args, name=job['name'])
         p.start()
 

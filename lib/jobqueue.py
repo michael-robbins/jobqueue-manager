@@ -87,7 +87,12 @@ class JobQueueManager():
         """ Main worker loop """
         while self.running:
             # Loop over the job queue and handle any jobs that we are not processing yet
-            for job in self.api_manager.get_job_queue():
+            job_queue = self.api_manager.get_job_queue()
+
+            if not job_queue:
+                self.logger.info('Job queue empty')
+
+            for job in job_queue:
                 try:
                     self.sync_manager.handle(job)
                     self.logger.info('Starting job {0}'.format(job['name']))
@@ -103,17 +108,17 @@ class JobQueueManager():
 
             # Sleep for a set time before checking the queue again
             sleep_time = float(self.config.DAEMON.sleep)
-            self.logger.debug('Sleeping for {0}'.format(sleep_time))
+            self.logger.debug('Sleeping for {0} seconds'.format(sleep_time))
             time.sleep(sleep_time)
 
         if not self.running:
             # Good-ish place to be in
             self.logger.warning('Main loop was stopped (running = False)')
+            return True
         else:
             # Bad place to be in
             self.logger.warning('Main loop broke without us saying (running = True)')
-
-        return True
+            return False
 
     def start(self):
         """ Start the daemon """

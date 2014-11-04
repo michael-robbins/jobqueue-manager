@@ -12,7 +12,7 @@ class ConfigManager():
 
     default_config = {
         DAEMON: ['pid_file', 'log_name', 'log_file', 'working_dir', 'umask', 'sleep']
-        , API: ['host', 'key']
+        , API: ['host', 'token']
     }
 
     class Config():
