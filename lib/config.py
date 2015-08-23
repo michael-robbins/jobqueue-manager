@@ -48,7 +48,7 @@ class ConfigManager():
 
         try:
             with open(config_file, 'r') as f:
-                config_parser.read(config_file)
+                config_parser.read(f)
         except IOError:
             message = "ERROR: Something is wrong with the config file: {0}".format(config_file)
             self.bail_with(message)
